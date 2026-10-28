@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Futura\ContaoBackendSuite\EventListener\DataContainer;
+namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
-use Futura\ContaoBackendSuite\CssStyle\StyleSelectorTableRegistry;
+use Futuraweb\ContaoBackendSuite\CssStyle\StyleSelectorTableRegistry;
 
 /**
  * Provides the "available in" table checkboxes on tl_style_selector.

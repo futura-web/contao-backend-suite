@@ -4,7 +4,7 @@ services:
         autoconfigure: true
         public: false
 
-    Futura\ContaoBackendSuite\:
+    Futuraweb\ContaoBackendSuite\:
         resource: '../src/'
         exclude:
             - '../src/ContaoManager/'

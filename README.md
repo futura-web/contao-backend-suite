@@ -15,7 +15,7 @@ Ein Projekt von [Futura Web](https://futura-web.de).
 ```
 
 ```bash
-composer require futura/contao-backend-suite
+composer require futuraweb/contao-backend-suite
 vendor/bin/contao-console contao:migrate
 vendor/bin/contao-console cache:clear
 ```
@@ -29,7 +29,7 @@ vendor/bin/contao-console cache:clear
 ```
 
 ```bash
-composer require futura/contao-backend-suite:@dev
+composer require futuraweb/contao-backend-suite:@dev
 vendor/bin/contao-console contao:migrate
 vendor/bin/contao-console cache:clear
 ```

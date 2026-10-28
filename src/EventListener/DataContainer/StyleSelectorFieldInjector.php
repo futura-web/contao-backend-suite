@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Futura\ContaoBackendSuite\EventListener\DataContainer;
+namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
-use Futura\ContaoBackendSuite\CssStyle\StyleMerger;
+use Futuraweb\ContaoBackendSuite\CssStyle\StyleMerger;
 
 /**
  * Injects the `backendSuiteStyleSelector` field into every DCA table that

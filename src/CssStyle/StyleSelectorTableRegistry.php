@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Futura\ContaoBackendSuite\CssStyle;
+namespace Futuraweb\ContaoBackendSuite\CssStyle;
 
 use Contao\Controller;
 use Contao\CoreBundle\Config\ResourceFinderInterface;

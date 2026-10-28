@@ -1,5 +1,5 @@
 {
-    "name": "futura/contao-backend-suite",
+    "name": "futuraweb/contao-backend-suite",
     "type": "contao-bundle",
     "description": "Backend-Werkzeuge für Contao 5 – ID-/Alias-Suche, Style-Selector für CSS-Klassen, Toolbar, Kurzlinks und mehr",
     "keywords": [
@@ -35,11 +35,11 @@
     },
     "autoload": {
         "psr-4": {
-            "Futura\\ContaoBackendSuite\\": "src/"
+            "Futuraweb\\ContaoBackendSuite\\": "src/"
         }
     },
     "extra": {
-        "contao-manager-plugin": "Futura\\ContaoBackendSuite\\ContaoManager\\Plugin"
+        "contao-manager-plugin": "Futuraweb\\ContaoBackendSuite\\ContaoManager\\Plugin"
     },
     "config": {
         "allow-plugins": {
