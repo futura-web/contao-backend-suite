@@ -1,0 +1,51 @@
+{
+    "name": "futura/contao-backend-suite",
+    "type": "contao-bundle",
+    "description": "Backend-Werkzeuge für Contao 5 – ID-/Alias-Suche, Style-Selector für CSS-Klassen, Toolbar, Kurzlinks und mehr",
+    "keywords": [
+        "contao",
+        "contao5",
+        "contao-bundle",
+        "backend",
+        "toolbar",
+        "developer-tools",
+        "css"
+    ],
+    "homepage": "https://github.com/futura-web/contao-backend-suite",
+    "license": "LGPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "Dinko Skopljak",
+            "homepage": "https://futura-web.de"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/futura-web/contao-backend-suite/issues",
+        "source": "https://github.com/futura-web/contao-backend-suite"
+    },
+    "require": {
+        "php": "^8.1",
+        "contao/core-bundle": "^5.3",
+        "contao/manager-plugin": "^2.0",
+        "doctrine/dbal": "^3.6 || ^4.0",
+        "symfony/config": "^6.4 || ^7.0",
+        "symfony/dependency-injection": "^6.4 || ^7.0",
+        "symfony/http-foundation": "^6.4 || ^7.0",
+        "symfony/http-kernel": "^6.4 || ^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Futura\\ContaoBackendSuite\\": "src/"
+        }
+    },
+    "extra": {
+        "contao-manager-plugin": "Futura\\ContaoBackendSuite\\ContaoManager\\Plugin"
+    },
+    "config": {
+        "allow-plugins": {
+            "contao-components/installer": true,
+            "contao/manager-plugin": true,
+            "php-http/discovery": true
+        }
+    }
+}
