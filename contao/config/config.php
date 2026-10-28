@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-$GLOBALS['BE_MOD']['backend_suite'] = [
+use Contao\ArrayUtil;
+
+ArrayUtil::arrayInsert($GLOBALS['BE_MOD']['design'], \count($GLOBALS['BE_MOD']['design']), [
     'style_selector' => [
         'tables' => ['tl_style_selector'],
     ],
-];
+]);
