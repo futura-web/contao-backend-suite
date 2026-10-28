@@ -52,6 +52,10 @@ class StyleSelectorTableRegistry
         $tables = [];
 
         foreach ($this->findCandidateTableNames() as $table) {
+            if ('tl_style_selector' === $table) {
+                continue;
+            }
+
             Controller::loadDataContainer($table);
 
             $field = $this->getClassField($table);
