@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Futura\ContaoBackendSuite\CssStyle;
 
 use Contao\Controller;
-use Contao\CoreBundle\Config\ResourceFinder;
+use Contao\CoreBundle\Config\ResourceFinderInterface;
 
 /**
  * Finds every DCA table that has a `cssID` or `cssClass` field, so the
@@ -31,7 +31,7 @@ class StyleSelectorTableRegistry
      */
     private bool $scanning = false;
 
-    public function __construct(private readonly ResourceFinder $resourceFinder)
+    public function __construct(private readonly ResourceFinderInterface $resourceFinder)
     {
     }
 
