@@ -74,4 +74,8 @@ Geplante Lösung: ein manueller Umschalter in der Toolbar, mit dem das aktive Pr
 
 - Symfony-Bundle für Contao 5, `#[AsHook]`/`#[AsCallback]`-Attribute statt klassischer Callback-Arrays.
 - Style-Selector-Daten liegen in `tl_style_selector`.
-- Das injizierte Auswahlfeld heißt `ffStyleSelector` und wird dynamisch in jede passende Tabelle eingehängt (eigene `blob`-Spalte je Tabelle, automatisch per `contao:migrate` angelegt).
+- Das injizierte Auswahlfeld heißt `backendSuiteStyleSelector` und wird dynamisch in jede passende Tabelle eingehängt (eigene `blob`-Spalte je Tabelle, automatisch per `contao:migrate` angelegt).
+
+## Namenskonvention
+
+Felder, die dieses Bundle in fremde Tabellen einhängt (z. B. `tl_content`, die nicht zu diesem Bundle gehören), bekommen einheitlich das Präfix `backendSuite` + Feature-Name in camelCase — so sind Kollisionen mit anderen Bundles ausgeschlossen und erkennbar, woher ein Feld stammt. Eigene Tabellen und Backend-Module (z. B. `tl_style_selector`, `style_selector`) folgen dagegen der normalen, unpräfixierten Contao-Konvention.

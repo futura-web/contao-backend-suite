@@ -11,8 +11,12 @@ use Doctrine\DBAL\Connection;
 use Futura\ContaoBackendSuite\CssStyle\StyleMerger;
 
 /**
- * Injects the `ffStyleSelector` field into every DCA table that has a
- * `cssID` or `cssClass` field — no manual wiring needed per table.
+ * Injects the `backendSuiteStyleSelector` field into every DCA table that
+ * has a `cssID` or `cssClass` field — no manual wiring needed per table.
+ *
+ * Naming convention: every field this bundle injects into a foreign table
+ * (one it doesn't own) is prefixed `backendSuite` + the feature name in
+ * camelCase, to avoid collisions with other bundles doing the same thing.
  *
  * Deliberately does NOT use StyleSelectorTableRegistry here: that service
  * force-loads every candidate table's DCA to build its list, which would
@@ -24,7 +28,7 @@ use Futura\ContaoBackendSuite\CssStyle\StyleMerger;
 #[AsHook('loadDataContainer')]
 class StyleSelectorFieldInjector
 {
-    private const FIELD = 'ffStyleSelector';
+    private const FIELD = 'backendSuiteStyleSelector';
     private const CLASS_FIELDS = ['cssID', 'cssClass'];
 
     public function __construct(
