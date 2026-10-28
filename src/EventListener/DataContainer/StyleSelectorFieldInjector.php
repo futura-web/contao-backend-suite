@@ -9,19 +9,25 @@ use Contao\DataContainer;
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Futura\ContaoBackendSuite\CssStyle\StyleMerger;
-use Futura\ContaoBackendSuite\CssStyle\StyleSelectorTableRegistry;
 
 /**
  * Injects the `ffStyleSelector` field into every DCA table that has a
  * `cssID` or `cssClass` field — no manual wiring needed per table.
+ *
+ * Deliberately does NOT use StyleSelectorTableRegistry here: that service
+ * force-loads every candidate table's DCA to build its list, which would
+ * mark this very table as "loaded" in Contao's per-request cache before
+ * this hook got a chance to inject the field — and Contao won't re-fire
+ * `loadDataContainer` for an already-loaded table. Checking the fields of
+ * the table this hook was actually called for avoids that trap entirely.
  */
 #[AsHook('loadDataContainer')]
 class StyleSelectorFieldInjector
 {
     private const FIELD = 'ffStyleSelector';
+    private const CLASS_FIELDS = ['cssID', 'cssClass'];
 
     public function __construct(
-        private readonly StyleSelectorTableRegistry $tableRegistry,
         private readonly StyleMerger $styleMerger,
         private readonly Connection $connection,
     ) {
@@ -33,7 +39,7 @@ class StyleSelectorFieldInjector
             return;
         }
 
-        $classField = $this->tableRegistry->getClassFieldForTable($table);
+        $classField = $this->getClassField($table);
 
         if (null === $classField) {
             return;
@@ -62,6 +68,19 @@ class StyleSelectorFieldInjector
         ];
 
         $this->injectIntoPalettes($dca, $classField);
+    }
+
+    private function getClassField(string $table): string|null
+    {
+        $fields = $GLOBALS['TL_DCA'][$table]['fields'] ?? [];
+
+        foreach (self::CLASS_FIELDS as $field) {
+            if (\array_key_exists($field, $fields)) {
+                return $field;
+            }
+        }
+
+        return null;
     }
 
     /**
