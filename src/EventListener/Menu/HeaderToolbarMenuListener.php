@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Futuraweb\ContaoBackendSuite\EventListener\Menu;
 
+use Contao\Controller;
 use Contao\CoreBundle\Event\MenuEvent;
 use Doctrine\DBAL\Connection;
 use Futuraweb\ContaoBackendSuite\Toolbar\CurrentThemeTracker;
@@ -47,6 +48,11 @@ class HeaderToolbarMenuListener
         if ([] === $themes) {
             return;
         }
+
+        // The "tl_theme" language file isn't loaded by default on pages
+        // that have nothing to do with themes (e.g. the dashboard), but
+        // the header menu is rendered on every backend page.
+        Controller::loadLanguageFile('tl_theme');
 
         $factory = $event->getFactory();
         $tree = $event->getTree();
