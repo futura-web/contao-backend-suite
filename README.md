@@ -41,7 +41,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Style-Selector** — benannte CSS-Klassen, die Redakteure an beliebigen Stellen auswählen können (Content-Elemente, Artikel, Module, Formulare, Seiten, Layouts, ...). Nach dem Vorbild von [craffft/css-style-selector-bundle](https://github.com/Craffft/css-style-selector-bundle), aber mit zwei Verbesserungen:
   - **Automatische Erkennung**: Jede Tabelle mit einem `cssID`- oder `cssClass`-Feld bekommt den Style-Selector automatisch eingehängt — keine eigene DCA-Datei pro Tabelle nötig.
   - **Dynamische Verfügbarkeit**: Statt fixer Checkboxen pro Tabelle (`disableInArticle`, `disableInContent`, ...) wird die Liste der verfügbaren Tabellen zur Laufzeit ermittelt.
-- [ ] Toolbar (inkl. Projekt-Umschalter für Mehrprojekt-Installationen, siehe unten)
+- [x] **Toolbar-Quicklinks** — Quicklinks zu Modulen, Seitenlayouts und Bildgrößen des aktuellen Themes direkt im Backend-Kopfmenü, plus Projekt-Umschalter bei mehreren Themes (siehe unten). Kein `tl_style_sheet`-Quicklink, da Contao 5 den internen CSS-Editor nicht mehr hat.
 - [ ] Sprache bei Startpunkten
 - [ ] ID-/Alias-Suche
 - [ ] IDs bei Shift anzeigen
@@ -64,11 +64,15 @@ Die Features werden nacheinander gebaut. Stand:
 4. Unter **Verfügbar in** die Bereiche ankreuzen, in denen der Style wählbar sein soll (z. B. Inhaltselemente, Artikel).
 5. In jedem passenden Formular (überall, wo es ein `cssID`- oder `cssClass`-Feld gibt) erscheint automatisch ein Mehrfachauswahlfeld "Style-Klassen". Die gewählten Styles werden beim Speichern in die vorhandene CSS-Klassen-Spalte eingemischt, bereits vorhandene, manuell eingetragene Klassen bleiben erhalten.
 
-### Toolbar: Projekt-Umschalter (geplant)
+### Toolbar: Quicklinks & Projekt-Umschalter
 
 Bei OM-Backend stapeln sich in der Toolbar die Theme-Buttons (Stylesheets, Module, Seitenlayouts, Bildgrößen) für **jedes** vorhandene Theme untereinander. In Mehrprojekt-Installationen wird das schnell unübersichtlich.
 
-Geplante Lösung: ein manueller Umschalter in der Toolbar, mit dem das aktive Projekt (Theme) ausgewählt wird. Die Auswahl wird pro Backend-Benutzer gespeichert und bleibt bestehen, bis sie geändert wird — danach zeigt die Toolbar nur noch die vier Buttons des aktuell gewählten Projekts.
+Hier zeigt das Backend-Kopfmenü stattdessen nur die Buttons des **aktuell erkannten** Themes ("Projekt"):
+
+- **Automatische Erkennung**: Sobald ein Modul, ein Seitenlayout, eine Bildgröße oder das Theme selbst bearbeitet bzw. aufgerufen wird, merkt sich die Session das zugehörige Theme automatisch.
+- **Umschalter**: Gibt es mehr als ein Theme, erscheint am Ende der Quicklinks ein Menüpunkt mit dem Namen des aktuellen Themes, der beim Hovern/Klicken alle anderen Themes als Auswahl anzeigt. Die Auswahl gilt für die laufende Session, bis automatisch oder manuell erneut gewechselt wird.
+- Kein `tl_style_sheet`-Quicklink: Contao 5 hat den klassischen internen CSS-Editor nicht mehr, nur noch echte CSS-Dateien.
 
 ## Technik
 
