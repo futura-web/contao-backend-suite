@@ -50,6 +50,14 @@ class FileNameSanitizer
 
     private function transliterate(string $value): string
     {
+        // macOS sends filenames in NFD (decomposed) form, e.g. "ü" as "u" +
+        // a combining diaeresis. Normalizing to NFC first ensures the
+        // German umlaut map below actually matches, instead of iconv
+        // silently dropping the combining mark and leaving a bare "u".
+        if (class_exists(\Normalizer::class)) {
+            $value = \Normalizer::normalize($value, \Normalizer::FORM_C) ?: $value;
+        }
+
         $value = strtr($value, self::GERMAN_MAP);
 
         $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
