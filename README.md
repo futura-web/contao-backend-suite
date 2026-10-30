@@ -53,7 +53,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [~] User-Redirects nach Login — nicht gewünscht, Standardverhalten (Dashboard) bleibt.
 - [x] Layout-Button in der Seitenstruktur — nicht nötig, bereits durch den "Seitenlayouts"-Quicklink in der Toolbar abgedeckt (siehe oben).
 - [x] **Speichern-Buttons ohne Untermenü** — "Speichern und neu" / "Speichern und duplizieren" stehen als eigene, immer sichtbare Buttons da statt hinter dem Dropdown-Pfeil versteckt zu sein.
-- [ ] Backend Full-Width
+- [~] Backend Full-Width — nicht nötig, im c5-Projekt bereits vorhanden/gegeben.
 - [ ] Reihenfolge der Backend-Module einstellbar
 - [ ] Neueste Contao-Version anzeigen
 
