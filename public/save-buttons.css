@@ -4,6 +4,8 @@
 .tl_submit_container .split-button ul.invisible {
     display: inline !important;
     position: static;
+    height: auto !important;
+    overflow: visible !important;
     list-style: none;
     margin: 0;
     padding: 0;
