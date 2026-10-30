@@ -1,0 +1,16 @@
+.tl_submit_container .split-button #sbtog {
+    display: none;
+}
+.tl_submit_container .split-button ul.invisible {
+    display: inline !important;
+    position: static;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.tl_submit_container .split-button ul.invisible li {
+    display: inline;
+}
+.tl_submit_container .split-button ul.invisible .tl_submit {
+    margin-left: 4px;
+}
