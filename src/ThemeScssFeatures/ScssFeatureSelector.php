@@ -7,19 +7,19 @@ namespace Futuraweb\ContaoBackendSuite\ThemeScssFeatures;
 use Contao\DataContainer;
 use Contao\Message;
 use Doctrine\DBAL\Connection;
+use Futuraweb\ContaoBackendSuite\Scss\ScssPartialToggle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Direkte Checkbox-Liste fuer die optionalen "@import"-Zeilen in
- * base.scss, kuratiert (nicht automatisch aus der Datei abgeleitet) -
- * nur diese Partials gelten als an/ausschaltbare "Features", nicht die
+ * Checkbox-Liste fuer die optionalen "@import"-Zeilen in base.scss,
+ * kuratiert (nicht automatisch aus der Datei abgeleitet) - nur diese
+ * Partials gelten als manuell an/ausschaltbare "Features", nicht die
  * strukturellen Imports (Variablen, Header, Hauptnavi, ...).
  *
- * "modalGallery" erfordert "slider" (Modal/Lightbox + Galerie-Grid nutzen
- * das Slider-Markup/JS mit) - beim Speichern wird das automatisch
- * durchgesetzt: Auswahl von "modalGallery" aktiviert "slider" zwangsweise
- * mit, und "slider" kann nicht deaktiviert werden, waehrend "modalGallery"
- * noch ausgewaehlt ist (wird dann ebenfalls deaktiviert).
+ * "Slider" und "Modal/Lightbox + Galerie-Grid" (_slider, _modal,
+ * _gallery) stehen hier bewusst NICHT zur Auswahl - sie werden
+ * automatisch anhand der passenden JS-Funktionen geschaltet, siehe
+ * JsFunctionSelector::JS_TRIGGERED_SCSS_PARTIALS.
  */
 class ScssFeatureSelector
 {
@@ -32,8 +32,6 @@ class ScssFeatureSelector
         'forms' => ['label' => 'Formulare (_forms)', 'partials' => ['forms']],
         'stickyFooter' => ['label' => 'Sticky Footer (_sticky_footer)', 'partials' => ['sticky_footer']],
         'banner' => ['label' => 'Banner (_banner)', 'partials' => ['banner']],
-        'slider' => ['label' => 'Slider (_slider)', 'partials' => ['slider']],
-        'modalGallery' => ['label' => 'Modal/Lightbox + Galerie-Grid (_modal, _gallery)', 'partials' => ['modal', 'gallery'], 'requires' => ['slider']],
         'beforeAfter' => ['label' => 'Vorher/Nachher-Vergleich (_before_after)', 'partials' => ['before_after']],
         'cookie' => ['label' => 'Cookie-Hinweis (_cookie)', 'partials' => ['cookie']],
         'autoscroll' => ['label' => 'Autoscroll (_autoscroll)', 'partials' => ['autoscroll']],
@@ -81,7 +79,7 @@ class ScssFeatureSelector
         }
 
         $this->connection->update(
-            'tl_theme',
+            'tl_layout',
             ['backendSuiteScssFeatures' => serialize($active)],
             ['id' => (int) $dc->id],
         );
@@ -93,7 +91,7 @@ class ScssFeatureSelector
             return;
         }
 
-        $raw = $this->connection->fetchOne('SELECT backendSuiteScssFeatures FROM tl_theme WHERE id = ?', [(int) $dc->id]);
+        $raw = $this->connection->fetchOne('SELECT backendSuiteScssFeatures FROM tl_layout WHERE id = ?', [(int) $dc->id]);
 
         if (false === $raw) {
             return;
@@ -128,7 +126,7 @@ class ScssFeatureSelector
             }
 
             foreach ($feature['partials'] as $partial) {
-                $content = $this->setPartialActive($content, $partial, $shouldBeActive);
+                $content = ScssPartialToggle::setActive($content, $partial, $shouldBeActive);
             }
 
             if ($shouldBeActive) {
@@ -158,11 +156,9 @@ class ScssFeatureSelector
     }
 
     /**
-     * Setzt die Auswahl so um, dass "requires" immer erfuellt ist:
-     * 1. Abhaengigkeiten nachziehen (z.B. "modalGallery" -> auch "slider").
-     * 2. Danach alles wieder entfernen, dessen Abhaengigkeit fehlt (z.B.
-     *    wenn "slider" separat abgewaehlt wurde, faellt "modalGallery" mit
-     *    weg, statt in einem inkonsistenten Zustand zu bleiben).
+     * Setzt die Auswahl so um, dass "requires" immer erfuellt ist (z.B.
+     * eine spaetere Checkbox, die eine andere voraussetzt): Abhaengigkeiten
+     * nachziehen, dann alles wieder entfernen, dessen Abhaengigkeit fehlt.
      *
      * @param list<string> $selected
      *
@@ -213,7 +209,7 @@ class ScssFeatureSelector
     private function isFeatureActive(string $content, array $partials): bool
     {
         foreach ($partials as $partial) {
-            if (true !== $this->getPartialState($content, $partial)) {
+            if (true !== ScssPartialToggle::getState($content, $partial)) {
                 return false;
             }
         }
@@ -221,31 +217,9 @@ class ScssFeatureSelector
         return true;
     }
 
-    private function getPartialState(string $content, string $partial): bool|null
+    private function readBaseScss(int $layoutId): string|null
     {
-        $regex = '/^\h*(\/\/\h*)?@import\h+"include\/_'.preg_quote($partial, '/').'"\h*;\h*$/m';
-
-        if (!preg_match($regex, $content, $m)) {
-            return null;
-        }
-
-        return '' === ($m[1] ?? '');
-    }
-
-    private function setPartialActive(string $content, string $partial, bool $active): string
-    {
-        $regex = '/^(\h*)(\/\/\h*)?(@import\h+"include\/_'.preg_quote($partial, '/').'"\h*;)\h*$/m';
-
-        $newContent = preg_replace_callback($regex, static function (array $m) use ($active): string {
-            return $m[1].($active ? '' : '// ').$m[3];
-        }, $content, 1);
-
-        return $newContent ?? $content;
-    }
-
-    private function readBaseScss(int $themeId): string|null
-    {
-        $path = $this->baseScssPath($this->resolveProjectSlug($themeId));
+        $path = $this->baseScssPath($this->resolveProjectSlug($layoutId));
 
         if (!is_file($path)) {
             return null;
@@ -261,9 +235,15 @@ class ScssFeatureSelector
         return $this->projectDir.'/files/public/'.$projectSlug.self::BASE_SCSS_RELATIVE_PATH;
     }
 
-    private function resolveProjectSlug(int $themeId): string
+    private function resolveProjectSlug(int $layoutId): string
     {
-        $templates = $this->connection->fetchOne('SELECT templates FROM tl_theme WHERE id = ?', [$themeId]);
+        $themeId = $this->connection->fetchOne('SELECT pid FROM tl_layout WHERE id = ?', [$layoutId]);
+
+        if (false === $themeId) {
+            return 'project';
+        }
+
+        $templates = $this->connection->fetchOne('SELECT templates FROM tl_theme WHERE id = ?', [(int) $themeId]);
 
         return false !== $templates && '' !== $templates ? basename((string) $templates) : 'project';
     }

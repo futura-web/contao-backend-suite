@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
+use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Futuraweb\ContaoBackendSuite\ThemeScssFeatures\ScssFeatureSelector;
@@ -11,10 +12,14 @@ use Futuraweb\ContaoBackendSuite\ThemeScssFeatures\ScssFeatureSelector;
 /**
  * Fügt eine Checkbox-Liste der optionalen SCSS-Features (die
  * auskommentierbaren "@import"-Zeilen in base.scss) zum
- * Theme-Bearbeiten-Formular hinzu.
+ * Seitenlayout-Formular hinzu, direkt unterhalb von "Stylesheets".
+ *
+ * Priority 10, damit diese Legend sicher VOR der JS-Funktionen-Legend
+ * (siehe LayoutJsFunctionFieldInjector) angelegt wird - die haengt sich
+ * mit POSITION_AFTER an diese hier an.
  */
-#[AsHook('loadDataContainer')]
-class ThemeScssFeatureFieldInjector
+#[AsHook('loadDataContainer', priority: 10)]
+class LayoutScssFeatureFieldInjector
 {
     private const FIELD = 'backendSuiteScssFeatures';
     private const LEGEND = 'backend_suite_scss_features_legend';
@@ -25,11 +30,11 @@ class ThemeScssFeatureFieldInjector
 
     public function __invoke(string $table): void
     {
-        if ('tl_theme' !== $table) {
+        if ('tl_layout' !== $table) {
             return;
         }
 
-        $dca = &$GLOBALS['TL_DCA']['tl_theme'];
+        $dca = &$GLOBALS['TL_DCA']['tl_layout'];
 
         if (isset($dca['fields'][self::FIELD])) {
             return;
@@ -52,28 +57,12 @@ class ThemeScssFeatureFieldInjector
             $this->selector->onSubmit($dc);
         };
 
-        $this->injectIntoPalettes($dca);
-    }
+        $GLOBALS['TL_LANG']['tl_layout'][self::LEGEND] = 'SCSS-Features';
 
-    private function injectIntoPalettes(array &$dca): void
-    {
-        if (!isset($dca['palettes']) || !\is_array($dca['palettes'])) {
-            return;
-        }
-
-        $block = '{'.self::LEGEND.'},'.self::FIELD;
-        $GLOBALS['TL_LANG']['tl_theme'][self::LEGEND] = 'SCSS-Features';
-
-        foreach ($dca['palettes'] as $name => $palette) {
-            if (!\is_string($palette) || str_contains($palette, self::FIELD)) {
-                continue;
-            }
-
-            if (preg_match('/\{config_legend\}[^;]*/', $palette)) {
-                $dca['palettes'][$name] = preg_replace('/(\{config_legend\}[^;]*)/', '$1;'.$block, $palette, 1);
-            } else {
-                $dca['palettes'][$name] = $palette.';'.$block;
-            }
-        }
+        PaletteManipulator::create()
+            ->addLegend(self::LEGEND, 'style_legend', PaletteManipulator::POSITION_AFTER)
+            ->addField([self::FIELD], self::LEGEND, PaletteManipulator::POSITION_APPEND)
+            ->applyToPalette('default', 'tl_layout')
+        ;
     }
 }

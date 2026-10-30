@@ -7,13 +7,14 @@ namespace Futuraweb\ContaoBackendSuite\ThemeJsFunctions;
 use Contao\DataContainer;
 use Contao\Message;
 use Doctrine\DBAL\Connection;
+use Futuraweb\ContaoBackendSuite\Scss\ScssPartialToggle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Spiegelt die einzelnen JS-Funktionsdateien unter
- * "theme/js/functions/js.<name>.js" als Checkbox-Liste im Theme-Backend,
- * statt sie manuell in "theme/js/php/assembleFunctions.js.php" ein- und
- * auszukommentieren.
+ * "theme/js/functions/js.<name>.js" als Checkbox-Liste im
+ * Seitenlayout-Backend, statt sie manuell in
+ * "theme/js/php/assembleFunctions.js.php" ein- und auszukommentieren.
  *
  * assembleFunctions.js.php bleibt die alleinige Quelle fuer WANN eine
  * Funktion aufgerufen wird (die Zeitpunkt-Buckets "base"/"classes"/
@@ -22,12 +23,39 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * (auskommentiert) ist. Eine Funktion, die dort noch GAR NICHT auftaucht,
  * wird beim ersten Aktivieren neu in den Bucket "ready" eingefuegt
  * (haeufigster Standardfall: DOM-Ready-Funktionen).
+ *
+ * Zwei Kopplungen zu anderen Dateien:
+ * - HIDDEN_DEPENDENTS: eine Funktion, die technisch zwingend eine andere
+ *   voraussetzt (z.B. "dSlider" braucht "dSliderDefines"), bekommt keine
+ *   eigene Checkbox - ihr Zustand folgt automatisch dem der Hauptfunktion.
+ * - JS_TRIGGERED_SCSS_PARTIALS: manche "@import"-Partials in base.scss
+ *   (Slider, Modal, Galerie) werden nicht ueber die separate
+ *   SCSS-Features-Liste manuell geschaltet, sondern automatisch aktiv,
+ *   sobald die passende JS-Funktion aktiv ist - so als waeren sie dort
+ *   angehakt.
  */
 class JsFunctionSelector
 {
     private const FUNCTIONS_RELATIVE_DIR = '/theme/js/functions';
     private const ASSEMBLE_FILE_RELATIVE_PATH = '/theme/js/php/assembleFunctions.js.php';
+    private const BASE_SCSS_RELATIVE_PATH = '/theme/css/base.scss';
     private const DEFAULT_BUCKET = 'ready';
+
+    /**
+     * @var array<string, list<string>>
+     */
+    private const HIDDEN_DEPENDENTS = [
+        'dSlider' => ['dSliderDefines'],
+    ];
+
+    /**
+     * @var array<string, list<string>>
+     */
+    private const JS_TRIGGERED_SCSS_PARTIALS = [
+        'dSlider' => ['slider'],
+        'contaoModal' => ['modal', 'slider'],
+        'dGallery' => ['gallery', 'slider'],
+    ];
 
     public function __construct(
         private readonly Connection $connection,
@@ -51,7 +79,7 @@ class JsFunctionSelector
         $active = array_keys(array_filter($this->getFunctionStates($projectSlug)));
 
         $this->connection->update(
-            'tl_theme',
+            'tl_layout',
             ['backendSuiteJsFunctions' => serialize($active)],
             ['id' => (int) $dc->id],
         );
@@ -66,9 +94,14 @@ class JsFunctionSelector
             return [];
         }
 
+        $hidden = array_merge(...array_values(self::HIDDEN_DEPENDENTS));
         $options = [];
 
         foreach ($this->getAvailableFunctions($this->resolveProjectSlug((int) $dc->id)) as $name) {
+            if (\in_array($name, $hidden, true)) {
+                continue;
+            }
+
             $options[$name] = $name;
         }
 
@@ -81,13 +114,15 @@ class JsFunctionSelector
             return;
         }
 
-        $raw = $this->connection->fetchOne('SELECT backendSuiteJsFunctions FROM tl_theme WHERE id = ?', [(int) $dc->id]);
+        $raw = $this->connection->fetchOne('SELECT backendSuiteJsFunctions FROM tl_layout WHERE id = ?', [(int) $dc->id]);
 
         if (false === $raw) {
             return;
         }
 
         $selected = \is_array($unserialized = @unserialize((string) $raw)) ? $unserialized : [];
+        $selected = $this->applyHiddenDependents($selected);
+
         $projectSlug = $this->resolveProjectSlug((int) $dc->id);
         $path = $this->assembleFilePath($projectSlug);
 
@@ -128,7 +163,9 @@ class JsFunctionSelector
             }
         }
 
-        if ([] === $enabled && [] === $disabled && [] === $added) {
+        $scssChanged = $this->syncScssPartials($projectSlug, $selected);
+
+        if ([] === $enabled && [] === $disabled && [] === $added && !$scssChanged) {
             return;
         }
 
@@ -146,7 +183,90 @@ class JsFunctionSelector
             $parts[] = 'deaktiviert: '.implode(', ', $disabled);
         }
 
-        Message::addConfirmation('JS-Funktionen '.implode('; ', $parts).'.');
+        if ($scssChanged) {
+            $parts[] = 'zugehörige SCSS-Partials (Slider/Modal/Galerie) angepasst';
+        }
+
+        if ([] !== $parts) {
+            Message::addConfirmation('JS-Funktionen '.implode('; ', $parts).'.');
+        }
+    }
+
+    /**
+     * Erzwingt, dass eine versteckte abhaengige Funktion (siehe
+     * HIDDEN_DEPENDENTS) immer denselben Aktiv-Zustand wie ihre
+     * Hauptfunktion hat - unabhaengig davon, was tatsaechlich im
+     * (nicht vorhandenen) Checkbox-Feld uebermittelt wurde.
+     *
+     * @param list<string> $selected
+     *
+     * @return list<string>
+     */
+    private function applyHiddenDependents(array $selected): array
+    {
+        foreach (self::HIDDEN_DEPENDENTS as $parent => $dependents) {
+            foreach ($dependents as $dependent) {
+                if (\in_array($parent, $selected, true)) {
+                    if (!\in_array($dependent, $selected, true)) {
+                        $selected[] = $dependent;
+                    }
+                } else {
+                    $selected = array_values(array_diff($selected, [$dependent]));
+                }
+            }
+        }
+
+        return $selected;
+    }
+
+    /**
+     * Aktiviert/deaktiviert die SCSS-Partials, die an bestimmte
+     * JS-Funktionen gekoppelt sind (siehe JS_TRIGGERED_SCSS_PARTIALS),
+     * in base.scss. Ein Partial gilt als aktiv, sobald IRGENDEINE der
+     * Funktionen, die es referenzieren, aktiv ist.
+     *
+     * @param list<string> $selected
+     */
+    private function syncScssPartials(string $projectSlug, array $selected): bool
+    {
+        $path = $this->baseScssPath($projectSlug);
+
+        if (!is_file($path)) {
+            return false;
+        }
+
+        $content = file_get_contents($path);
+
+        if (false === $content) {
+            return false;
+        }
+
+        $allPartials = array_values(array_unique(array_merge(...array_values(self::JS_TRIGGERED_SCSS_PARTIALS))));
+        $changed = false;
+
+        foreach ($allPartials as $partial) {
+            $shouldBeActive = false;
+
+            foreach (self::JS_TRIGGERED_SCSS_PARTIALS as $jsName => $partials) {
+                if (\in_array($partial, $partials, true) && \in_array($jsName, $selected, true)) {
+                    $shouldBeActive = true;
+                    break;
+                }
+            }
+
+            $isActive = ScssPartialToggle::getState($content, $partial);
+
+            if (null !== $isActive && $shouldBeActive !== $isActive) {
+                $content = ScssPartialToggle::setActive($content, $partial, $shouldBeActive);
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            file_put_contents($path, $content);
+        }
+
+        return $changed;
     }
 
     /**
@@ -283,9 +403,20 @@ class JsFunctionSelector
         return $this->projectDir.'/files/public/'.$projectSlug.self::ASSEMBLE_FILE_RELATIVE_PATH;
     }
 
-    private function resolveProjectSlug(int $themeId): string
+    private function baseScssPath(string $projectSlug): string
     {
-        $templates = $this->connection->fetchOne('SELECT templates FROM tl_theme WHERE id = ?', [$themeId]);
+        return $this->projectDir.'/files/public/'.$projectSlug.self::BASE_SCSS_RELATIVE_PATH;
+    }
+
+    private function resolveProjectSlug(int $layoutId): string
+    {
+        $themeId = $this->connection->fetchOne('SELECT pid FROM tl_layout WHERE id = ?', [$layoutId]);
+
+        if (false === $themeId) {
+            return 'project';
+        }
+
+        $templates = $this->connection->fetchOne('SELECT templates FROM tl_theme WHERE id = ?', [(int) $themeId]);
 
         return false !== $templates && '' !== $templates ? basename((string) $templates) : 'project';
     }
