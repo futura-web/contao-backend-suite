@@ -27,7 +27,6 @@ class JsFunctionSelector
 {
     private const FUNCTIONS_RELATIVE_DIR = '/theme/js/functions';
     private const ASSEMBLE_FILE_RELATIVE_PATH = '/theme/js/php/assembleFunctions.js.php';
-    private const BASE_SCSS_RELATIVE_PATH = '/theme/css/base.scss';
     private const DEFAULT_BUCKET = 'ready';
 
     public function __construct(
@@ -102,7 +101,6 @@ class JsFunctionSelector
         $enabled = [];
         $disabled = [];
         $added = [];
-        $scssActivated = [];
 
         foreach ($this->getAvailableFunctions($projectSlug) as $name) {
             $shouldBeActive = \in_array($name, $selected, true);
@@ -116,10 +114,6 @@ class JsFunctionSelector
                 if ($shouldBeActive) {
                     $this->insertFunction($path, $name);
                     $added[] = $name;
-
-                    if ($scssFile = $this->activateMatchingScssImport($projectSlug, $name)) {
-                        $scssActivated[] = $scssFile;
-                    }
                 }
 
                 continue;
@@ -128,10 +122,6 @@ class JsFunctionSelector
             if ($this->setFunctionActive($path, $name, $shouldBeActive)) {
                 if ($shouldBeActive) {
                     $enabled[] = $name;
-
-                    if ($scssFile = $this->activateMatchingScssImport($projectSlug, $name)) {
-                        $scssActivated[] = $scssFile;
-                    }
                 } else {
                     $disabled[] = $name;
                 }
@@ -154,10 +144,6 @@ class JsFunctionSelector
 
         if ($disabled) {
             $parts[] = 'deaktiviert: '.implode(', ', $disabled);
-        }
-
-        if ($scssActivated) {
-            $parts[] = 'zugehöriges SCSS aktiviert: '.implode(', ', $scssActivated);
         }
 
         Message::addConfirmation('JS-Funktionen '.implode('; ', $parts).'.');
@@ -271,67 +257,6 @@ class JsFunctionSelector
         }
 
         file_put_contents($path, $newContent);
-    }
-
-    /**
-     * Aktiviert beim Einschalten einer JS-Funktion automatisch das dazu
-     * passende, bislang auskommentierte SCSS-Partial in base.scss - z.B.
-     * schaltet "dSlider" das auskommentierte "@import "include/_slider";"
-     * scharf. Abgleich per Teilstring (Funktionsname ohne Praefix enthaelt
-     * den Partial-Namen, z.B. "dSlider" <-> "slider"), ausschliesslich
-     * ueber bereits vorhandene, aktuell auskommentierte Imports - es wird
-     * nichts neu erfunden oder eingefuegt. Bei mehreren moeglichen
-     * Treffern wird aus Sicherheitsgruenden nichts automatisch aktiviert.
-     */
-    private function activateMatchingScssImport(string $projectSlug, string $functionName): string|null
-    {
-        $path = $this->projectDir.'/files/public/'.$projectSlug.self::BASE_SCSS_RELATIVE_PATH;
-
-        if (!is_file($path)) {
-            return null;
-        }
-
-        $content = file_get_contents($path);
-
-        if (false === $content) {
-            return null;
-        }
-
-        if (!preg_match_all('/^(\h*)(\/\/\h*)?@import\h+"include\/_([a-zA-Z0-9_]+)"\h*;\h*$/m', $content, $matches, PREG_SET_ORDER)) {
-            return null;
-        }
-
-        $normalizedFunction = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $functionName) ?? '');
-        $candidates = [];
-
-        foreach ($matches as $m) {
-            if ('' === $m[2]) {
-                continue; // bereits aktiv
-            }
-
-            $normalizedPartial = strtolower(str_replace('_', '', $m[3]));
-
-            if ('' !== $normalizedPartial && str_contains($normalizedFunction, $normalizedPartial)) {
-                $candidates[] = $m[3];
-            }
-        }
-
-        if (1 !== \count($candidates)) {
-            return null;
-        }
-
-        $partial = $candidates[0];
-        $regex = '/^(\h*)\/\/\h*(@import\h+"include\/_'.preg_quote($partial, '/').'"\h*;)\h*$/m';
-
-        $newContent = preg_replace($regex, '$1$2', $content, 1, $count);
-
-        if (null === $newContent || $count < 1) {
-            return null;
-        }
-
-        file_put_contents($path, $newContent);
-
-        return '_'.$partial.'.scss';
     }
 
     private function readArrayBlock(string $path): string|null
