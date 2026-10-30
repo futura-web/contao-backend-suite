@@ -42,6 +42,7 @@ Die Features werden nacheinander gebaut. Stand:
   - **Automatische Erkennung**: Jede Tabelle mit einem `cssID`- oder `cssClass`-Feld bekommt den Style-Selector automatisch eingehängt — keine eigene DCA-Datei pro Tabelle nötig.
   - **Dynamische Verfügbarkeit**: Statt fixer Checkboxen pro Tabelle (`disableInArticle`, `disableInContent`, ...) wird die Liste der verfügbaren Tabellen zur Laufzeit ermittelt.
 - [x] **Toolbar-Quicklinks** — Quicklinks zu Modulen, Seitenlayouts und Bildgrößen des aktuellen Themes direkt im Backend-Kopfmenü, plus Projekt-Umschalter bei mehreren Themes (siehe unten). Kein `tl_style_sheet`-Quicklink, da Contao 5 den internen CSS-Editor nicht mehr hat.
+- [x] **Bild-Shrinker** — Bilder beim Hochladen automatisch komprimieren und Dateinamen bereinigen (siehe unten).
 - [ ] Sprache bei Startpunkten
 - [ ] ID-/Alias-Suche
 - [ ] IDs bei Shift anzeigen
@@ -73,6 +74,15 @@ Hier zeigt das Backend-Kopfmenü stattdessen nur die Buttons des **aktuell erkan
 - **Automatische Erkennung**: Sobald ein Modul, ein Seitenlayout, eine Bildgröße oder das Theme selbst bearbeitet bzw. aufgerufen wird, merkt sich die Session das zugehörige Theme automatisch.
 - **Umschalter**: Gibt es mehr als ein Theme, erscheint am Ende der Quicklinks ein Menüpunkt mit dem Namen des aktuellen Themes, der beim Hovern/Klicken alle anderen Themes als Auswahl anzeigt. Die Auswahl gilt für die laufende Session, bis automatisch oder manuell erneut gewechselt wird.
 - Kein `tl_style_sheet`-Quicklink: Contao 5 hat den klassischen internen CSS-Editor nicht mehr, nur noch echte CSS-Dateien.
+
+### Bild-Shrinker: Komprimierung & Dateinamen-Bereinigung
+
+Im Dateimanager gibt es einen Schalter ("Bilder verkleinern: An/Aus") in der Werkzeugleiste. Der Zustand wird pro Theme ("Projekt") gespeichert, nicht global oder pro Sitzung.
+
+Ist der Schalter für das aktuelle Projekt aktiviert, passiert bei jedem Bild-Upload (JPEG, PNG, WebP; GIFs werden wegen möglicher Animation übersprungen) automatisch:
+
+- **Komprimierung**: Bilder über 1 MB werden ohne Änderung der Abmessungen stärker komprimiert, um die Dateigröße zu senken.
+- **Dateiname bereinigen**: Kleinschreibung, Leerzeichen → Unterstrich, Umlaute/Sonderzeichen werden transliteriert (`ä` → `ae`, `ö` → `oe`, `ü` → `ue`, `ß` → `ss`, sonstige Akzente via Transliteration), und ein `.min`-Marker wird vor der Dateiendung eingefügt (`Mein Büro Foto.JPG` → `mein_buero_foto.min.jpg`). Bereits bereinigte Namen bleiben beim erneuten Durchlauf unverändert.
 
 ## Technik
 
