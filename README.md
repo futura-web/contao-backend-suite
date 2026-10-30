@@ -46,7 +46,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Sprache bei Startpunkten** — zeigt den Sprachcode einer Startseite (`type = root`) direkt im Seitenbaum an, z. B. „Startseite [de]".
 - [x] **ID-/Alias-Suche** — die Seiten-ID steht direkt neben dem Titel im Seitenbaum (z. B. „Startseite [ID: 1]"); der Seitenalias ist bereits über Contao-Core im Backend-Suchfeld durchsuchbar.
 - [x] **IDs bei Shift anzeigen** — die Seiten-ID (siehe ID-/Alias-Suche) ist standardmäßig ausgeblendet und erscheint nur, solange die Umschalttaste (Shift) gedrückt gehalten wird.
-- [ ] Textfeld-Längenanzeige
+- [x] **Textfeld-Längenanzeige** — unter Seitentitel und Beschreibung (`pageTitle`/`description`) zeigt ein Live-Zähler die Zeichenanzahl, farblich markiert gegen die von Google üblicherweise angezeigte Länge (Titel 40–60, Beschreibung 120–160 Zeichen).
 - [ ] Markdown-Viewer
 - [ ] Backend-Tabs
 - [ ] Backend-Links (Kurzlinks)

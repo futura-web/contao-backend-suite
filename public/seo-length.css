@@ -1,0 +1,15 @@
+.backend-suite-char-count {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.backend-suite-char-count--short {
+    color: #b8860b;
+}
+.backend-suite-char-count--ok {
+    color: #2e7d32;
+}
+.backend-suite-char-count--long {
+    color: #c0392b;
+}
