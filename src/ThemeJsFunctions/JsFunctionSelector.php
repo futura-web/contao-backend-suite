@@ -78,6 +78,13 @@ class JsFunctionSelector
         $projectSlug = $this->resolveProjectSlug((int) $dc->id);
         $active = array_keys(array_filter($this->getFunctionStates($projectSlug)));
 
+        // Versteckte Abhaengigkeiten (siehe HIDDEN_DEPENDENTS) haben keine
+        // eigene Checkbox - wuerden sie hier mitgespeichert, rendert
+        // Contao sie als "Unbekannte Option", weil getOptionsForDc() sie
+        // nicht mehr auflistet.
+        $hidden = array_merge(...array_values(self::HIDDEN_DEPENDENTS));
+        $active = array_values(array_diff($active, $hidden));
+
         $this->connection->update(
             'tl_layout',
             ['backendSuiteJsFunctions' => serialize($active)],
