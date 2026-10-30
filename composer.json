@@ -39,7 +39,8 @@
         }
     },
     "extra": {
-        "contao-manager-plugin": "Futuraweb\\ContaoBackendSuite\\ContaoManager\\Plugin"
+        "contao-manager-plugin": "Futuraweb\\ContaoBackendSuite\\ContaoManager\\Plugin",
+        "contao-metadata-url": "https://raw.githubusercontent.com/futura-web/contao-backend-suite/main/metadata.json"
     },
     "config": {
         "allow-plugins": {
