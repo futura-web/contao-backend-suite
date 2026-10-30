@@ -51,7 +51,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [ ] Backend-Tabs
 - [x] Backend-Links (Kurzlinks) — bereits durch Contao-Core abgedeckt: "URL als Favorit speichern" + die **Favoriten**-Verwaltung (`do=favorites`), kein eigener Code nötig.
 - [~] User-Redirects nach Login — nicht gewünscht, Standardverhalten (Dashboard) bleibt.
-- [ ] Layout-Button in der Seitenstruktur
+- [x] Layout-Button in der Seitenstruktur — nicht nötig, bereits durch den "Seitenlayouts"-Quicklink in der Toolbar abgedeckt (siehe oben).
 - [ ] Speichern-Buttons ohne Untermenü
 - [ ] Backend Full-Width
 - [ ] Reihenfolge der Backend-Module einstellbar
