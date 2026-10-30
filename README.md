@@ -49,7 +49,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Textfeld-Längenanzeige** — unter Seitentitel und Beschreibung (`pageTitle`/`description`) zeigt ein Live-Zähler die Zeichenanzahl, farblich markiert gegen die von Google üblicherweise angezeigte Länge (Titel 40–60, Beschreibung 120–160 Zeichen).
 - [~] Markdown-Viewer — nicht relevant, wird nicht gebaut (kein Markdown-Einsatz in den Projekten).
 - [ ] Backend-Tabs
-- [ ] Backend-Links (Kurzlinks)
+- [x] Backend-Links (Kurzlinks) — bereits durch Contao-Core abgedeckt: "URL als Favorit speichern" + die **Favoriten**-Verwaltung (`do=favorites`), kein eigener Code nötig.
 - [ ] User-Redirects nach Login
 - [ ] Layout-Button in der Seitenstruktur
 - [ ] Speichern-Buttons ohne Untermenü
