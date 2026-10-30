@@ -26,6 +26,6 @@ class PageIdLabelInjector
             $labelConfig['fields'][] = 'id';
         }
 
-        $labelConfig['format'] = '%s <span style="color:#999999;padding-left:3px;font-weight:normal;">[ID: %s]</span>';
+        $labelConfig['format'] = '%s <span class="backend-suite-page-id">[ID: %s]</span>';
     }
 }
