@@ -56,52 +56,52 @@ class ColorImporter
             return;
         }
 
-        $colors = self::parseColorList((string) $row['backendSuiteColors']);
-
-        if ([] === $colors) {
-            return;
-        }
-
         // "templates" speichert den Pfad relativ zum Projekt-Root (z.B.
         // "templates/project"), nicht nur den Ordnernamen - daher basename().
         $projectSlug = basename((string) ($row['templates'] ?: 'project'));
-        $path = $this->varsColorsPath($projectSlug);
+        $colors = self::parseColorList((string) $row['backendSuiteColors']);
 
-        if (!is_file($path)) {
-            Message::addError(sprintf('Farb-Import: "%s" wurde nicht gefunden.', $path));
+        if ([] !== $colors) {
+            $path = $this->varsColorsPath($projectSlug);
 
-            return;
-        }
+            if (!is_file($path)) {
+                Message::addError(sprintf('Farb-Import: "%s" wurde nicht gefunden.', $path));
 
-        $updated = [];
-        $added = [];
-
-        foreach ($colors as $name => $entry) {
-            $isNew = !self::setVariable($path, $name, $entry['value'], $entry['label']);
-
-            if ($isNew) {
-                self::appendVariable($path, $name, $entry['value'], $entry['label']);
-                $added[] = $name;
-            } else {
-                $updated[] = $name;
+                return;
             }
+
+            $updated = [];
+            $added = [];
+
+            foreach ($colors as $name => $entry) {
+                $isNew = !self::setVariable($path, $name, $entry['value'], $entry['label']);
+
+                if ($isNew) {
+                    self::appendVariable($path, $name, $entry['value'], $entry['label']);
+                    $added[] = $name;
+                } else {
+                    $updated[] = $name;
+                }
+            }
+
+            Message::addConfirmation(sprintf(
+                'Farb-Import: %d Variable(n) aktualisiert%s.',
+                \count($updated) + \count($added),
+                $added ? ' (neu angelegt: '.implode(', ', $added).')' : '',
+            ));
+
+            // Eingabefeld nach erfolgreicher Verarbeitung leeren - die
+            // "aktuell eingebundenen Farben" werden client-seitig direkt
+            // aus _vars_colors.scss angezeigt, nicht aus diesem Feld.
+            $this->connection->update('tl_theme', ['backendSuiteColors' => ''], ['id' => (int) $dc->id]);
         }
-
-        Message::addConfirmation(sprintf(
-            'Farb-Import: %d Variable(n) aktualisiert%s.',
-            \count($updated) + \count($added),
-            $added ? ' (neu angelegt: '.implode(', ', $added).')' : '',
-        ));
-
-        // Eingabefeld nach erfolgreicher Verarbeitung leeren - die "aktuell
-        // eingebundenen Farben" werden client-seitig direkt aus
-        // _vars_colors.scss angezeigt, nicht aus diesem Feld.
-        $this->connection->update('tl_theme', ['backendSuiteColors' => ''], ['id' => (int) $dc->id]);
 
         // Hintergrundfarben-Klassen (.bg_<name>) und Style-Suite-Eintraege
-        // aus dem KOMPLETTEN aktuellen Farbbestand neu aufbauen, nicht nur
-        // aus den gerade uebermittelten Zeilen - so bleibt alles synchron,
-        // auch wenn _vars_colors.scss zwischendurch manuell bearbeitet wurde.
+        // bei JEDEM Speichern aus dem KOMPLETTEN aktuellen Farbbestand neu
+        // aufbauen (nicht nur, wenn das Feld "Farben" gerade befuellt war -
+        // es ist nach erfolgreichem Speichern ja immer leer) - so bleibt
+        // alles synchron, auch wenn _vars_colors.scss zwischendurch manuell
+        // bearbeitet wurde.
         $allColors = $this->parseColorsFromFile((int) $dc->id);
         $this->regenerateBackgroundClasses($projectSlug, $allColors);
         $this->syncStyleSelectorEntries($allColors);
