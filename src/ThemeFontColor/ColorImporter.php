@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\ThemeFontColor;
 use Contao\DataContainer;
 use Contao\Message;
 use Doctrine\DBAL\Connection;
+use Futuraweb\ContaoBackendSuite\CssStyle\StyleSelectorTableRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -19,11 +20,22 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * Existiert die Variable schon in der Datei, wird nur ihr Wert ersetzt;
  * sonst wird eine neue Zeile ans Ende angehängt. Erwartet dieselbe
  * SCSS-Projektstruktur-Konvention wie der FontImporter.
+ *
+ * Erzeugt ausserdem automatisch fuer JEDE Farbe mit Farbton eine
+ * ".bg_<name>"-Hintergrundfarben-Klasse (z.B. "$green" -> ".bg_green") in
+ * "_backgrounds.scss", aktiviert deren bislang auskommentierten Import in
+ * base.scss, und legt/aktualisiert dazu passende Style-Suite-Eintraege
+ * ("Hintergrund: <Farbton>") an, damit die Klasse direkt in der
+ * Style-Suite auswaehlbar ist.
  */
 class ColorImporter
 {
+    private const BACKGROUNDS_SCSS_RELATIVE_PATH = '/theme/css/include/_backgrounds.scss';
+    private const BASE_SCSS_RELATIVE_PATH = '/theme/css/base.scss';
+
     public function __construct(
         private readonly Connection $connection,
+        private readonly StyleSelectorTableRegistry $tableRegistry,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
@@ -52,7 +64,8 @@ class ColorImporter
 
         // "templates" speichert den Pfad relativ zum Projekt-Root (z.B.
         // "templates/project"), nicht nur den Ordnernamen - daher basename().
-        $path = $this->varsColorsPath(basename((string) ($row['templates'] ?: 'project')));
+        $projectSlug = basename((string) ($row['templates'] ?: 'project'));
+        $path = $this->varsColorsPath($projectSlug);
 
         if (!is_file($path)) {
             Message::addError(sprintf('Farb-Import: "%s" wurde nicht gefunden.', $path));
@@ -84,6 +97,14 @@ class ColorImporter
         // eingebundenen Farben" werden client-seitig direkt aus
         // _vars_colors.scss angezeigt, nicht aus diesem Feld.
         $this->connection->update('tl_theme', ['backendSuiteColors' => ''], ['id' => (int) $dc->id]);
+
+        // Hintergrundfarben-Klassen (.bg_<name>) und Style-Suite-Eintraege
+        // aus dem KOMPLETTEN aktuellen Farbbestand neu aufbauen, nicht nur
+        // aus den gerade uebermittelten Zeilen - so bleibt alles synchron,
+        // auch wenn _vars_colors.scss zwischendurch manuell bearbeitet wurde.
+        $allColors = $this->parseColorsFromFile((int) $dc->id);
+        $this->regenerateBackgroundClasses($projectSlug, $allColors);
+        $this->syncStyleSelectorEntries($allColors);
     }
 
     /**
@@ -167,6 +188,132 @@ class ColorImporter
         $line = $name.': '.$value.';'.(null !== $label ? ' //'.$label : '');
 
         file_put_contents($path, rtrim($content, "\n")."\n".$line."\n");
+    }
+
+    /**
+     * Schreibt fuer jede Farbe mit Farbton eine ".bg_<name>"-Regel nach
+     * "_backgrounds.scss" (komplett neu, wie bei _fontface.scss) und
+     * aktiviert deren Import in base.scss, falls er noch auskommentiert
+     * ist (einmalig - bleibt danach aktiv).
+     *
+     * @param array<string, array{value: string, label: string|null}> $colors
+     */
+    private function regenerateBackgroundClasses(string $projectSlug, array $colors): void
+    {
+        if ([] === $colors) {
+            return;
+        }
+
+        $path = $this->projectDir.'/files/public/'.$projectSlug.self::BACKGROUNDS_SCSS_RELATIVE_PATH;
+
+        if (!is_dir(\dirname($path))) {
+            return;
+        }
+
+        $lines = [
+            '/*',
+            '* Automatisch generiert aus den im Theme gepflegten Farben (Feld "Farben").',
+            '* Manuelle Änderungen hier gehen beim nächsten Speichern des Themes verloren.',
+            '*/',
+            '',
+        ];
+
+        foreach ($colors as $name => $entry) {
+            $lines[] = sprintf('.bg_%s {', self::backgroundSlug($name));
+            $lines[] = sprintf('  background-color: %s;', $name);
+            $lines[] = '}';
+            $lines[] = '';
+        }
+
+        file_put_contents($path, rtrim(implode("\r\n", $lines))."\r\n");
+
+        $this->activateBackgroundsImport($projectSlug);
+    }
+
+    private function activateBackgroundsImport(string $projectSlug): void
+    {
+        $path = $this->projectDir.'/files/public/'.$projectSlug.self::BASE_SCSS_RELATIVE_PATH;
+
+        if (!is_file($path)) {
+            return;
+        }
+
+        $content = file_get_contents($path);
+
+        if (false === $content) {
+            return;
+        }
+
+        $newContent = preg_replace(
+            '/^(\h*)\/\/\h*(@import\h+"include\/_backgrounds"\h*;)\h*$/m',
+            '$1$2',
+            $content,
+            1,
+        );
+
+        if (null !== $newContent && $newContent !== $content) {
+            file_put_contents($path, $newContent);
+        }
+    }
+
+    /**
+     * Legt für jede Farbe mit Farbton einen Style-Suite-Eintrag
+     * ("Hintergrund: <Farbton>" -> Klasse "bg_<name>") an bzw. aktualisiert
+     * ihn, damit die generierte Hintergrundfarben-Klasse direkt in der
+     * Style-Suite auswählbar ist - verfügbar für alle Tabellen, die die
+     * Style-Suite unterstützen (cssID/cssClass-Feld).
+     *
+     * @param array<string, array{value: string, label: string|null}> $colors
+     */
+    private function syncStyleSelectorEntries(array $colors): void
+    {
+        if ([] === $colors) {
+            return;
+        }
+
+        $tables = array_keys($this->tableRegistry->getTables());
+
+        if ([] === $tables) {
+            return;
+        }
+
+        $serializedTables = serialize($tables);
+
+        foreach ($colors as $name => $entry) {
+            if (null === $entry['label'] || '' === $entry['label']) {
+                continue;
+            }
+
+            $cssClass = 'bg_'.self::backgroundSlug($name);
+            $title = 'Hintergrund: '.$entry['label'];
+
+            $existingId = $this->connection->fetchOne(
+                'SELECT id FROM tl_style_selector WHERE cssClass = ?',
+                [$cssClass],
+            );
+
+            if (false !== $existingId) {
+                $this->connection->update(
+                    'tl_style_selector',
+                    ['tstamp' => time(), 'title' => $title, 'tables' => $serializedTables],
+                    ['id' => (int) $existingId],
+                );
+
+                continue;
+            }
+
+            $this->connection->insert('tl_style_selector', [
+                'tstamp' => time(),
+                'title' => $title,
+                'cssClass' => $cssClass,
+                'tables' => $serializedTables,
+            ]);
+        }
+    }
+
+    private static function backgroundSlug(string $varName): string
+    {
+        return strtolower(ltrim($varName, '$'));
     }
 
     /**
