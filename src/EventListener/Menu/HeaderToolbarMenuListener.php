@@ -70,9 +70,15 @@ class HeaderToolbarMenuListener
                     ->setLabel($GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey)
                     ->setLinkAttribute('class', 'icon-'.$table)
                     ->setLinkAttribute('title', $GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey)
+                    ->setAttribute('class', 'backend-suite-header-icon')
                     ->setExtra('translation_domain', false),
             );
         }
+
+        // Eigenes CSS, da Contao fuer diese (von uns hinzugefuegten) Klassen
+        // keine Icon-Darstellung mitbringt - ohne das Stylesheet erscheinen
+        // die Links als reiner Text statt als Icon-Buttons vor "Handbuch".
+        $GLOBALS['TL_CSS'][] = 'bundles/contaobackendsuite/backend/headerToolbar.css';
 
         if (\count($themes) < 2) {
             return;

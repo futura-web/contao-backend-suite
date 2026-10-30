@@ -1,0 +1,38 @@
+/*
+ * Stellt die Theme-Quicklinks (Module, Seitenlayouts, Bildgrößen) im
+ * Backend-Header als Icon-Buttons dar statt als Text-Links, und
+ * positioniert sie (per Flexbox-"order", #tmenu ist display:flex) vor
+ * "Handbuch" statt ganz am Ende der Leiste.
+ *
+ * Groesse bewusst etwas groesser als Contaos eigene Toolbar-Icons
+ * (dort 16x14px / background-size auto).
+ */
+#tmenu > li.backend-suite-header-icon {
+    order: -10;
+}
+
+#tmenu > li.backend-suite-header-icon > a {
+    display: inline-block;
+    width: 20px;
+    height: 18px;
+    padding: 14px 13px;
+    margin: 0 0 -2px;
+    overflow: hidden;
+    text-indent: 32px;
+    line-height: 18px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 20px 20px;
+}
+
+a.icon-tl_module {
+    background-image: url("/system/themes/flexible/icons/modules.svg");
+}
+
+a.icon-tl_layout {
+    background-image: url("/system/themes/flexible/icons/layout.svg");
+}
+
+a.icon-tl_image_size {
+    background-image: url("/system/themes/flexible/icons/sizes.svg");
+}
