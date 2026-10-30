@@ -7,15 +7,16 @@ namespace Futuraweb\ContaoBackendSuite\Upload;
 use Imagine\Image\ImagineInterface;
 
 /**
- * Downscales an image file in place if it exceeds a maximum edge length.
- * Does nothing (and returns false) if the image is already small enough.
+ * Recompresses an image file in place to reduce its file size, without
+ * changing its pixel dimensions. Does nothing (and returns false) if the
+ * file is already small enough.
  */
 class ImageShrinker
 {
-    private const MAX_EDGE = 2000;
-    private const JPEG_QUALITY = 82;
-    private const PNG_COMPRESSION = 7;
-    private const WEBP_QUALITY = 82;
+    private const MAX_FILE_SIZE = 1_000_000;
+    private const JPEG_QUALITY = 75;
+    private const PNG_COMPRESSION = 9;
+    private const WEBP_QUALITY = 75;
 
     public function __construct(private readonly ImagineInterface $imagine)
     {
@@ -23,17 +24,13 @@ class ImageShrinker
 
     public function shrink(string $absolutePath): bool
     {
-        $image = $this->imagine->open($absolutePath);
-        $size = $image->getSize();
-        $longestEdge = max($size->getWidth(), $size->getHeight());
-
-        if ($longestEdge <= self::MAX_EDGE) {
+        if (filesize($absolutePath) <= self::MAX_FILE_SIZE) {
             return false;
         }
 
-        $newSize = $size->scale(self::MAX_EDGE / $longestEdge);
+        $image = $this->imagine->open($absolutePath);
 
-        $image->resize($newSize)->save($absolutePath, [
+        $image->save($absolutePath, [
             'jpeg_quality' => self::JPEG_QUALITY,
             'png_compression_level' => self::PNG_COMPRESSION,
             'webp_quality' => self::WEBP_QUALITY,
