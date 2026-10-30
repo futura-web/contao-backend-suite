@@ -38,12 +38,11 @@ class PageRootLanguageLabelInjector
                 ? System::importStatic($original[0])->{$original[1]}($row, $label, $dc, $imageAttribute, $blnReturnImage, $blnProtected, $isVisibleRootTrailPage)
                 : $original($row, $label, $dc, $imageAttribute, $blnReturnImage, $blnProtected, $isVisibleRootTrailPage);
 
-            if ($blnReturnImage) {
+            if ($blnReturnImage || 'root' !== $row['type'] || '' === (string) ($row['language'] ?? '')) {
                 return $buffer;
             }
 
-            // TEMP DEBUG: unconditional marker to confirm the hook fires at all.
-            return $buffer.' <span class="tl_gray">[DEBUGMARK]</span>';
+            return $buffer.' <span class="tl_gray">['.StringUtil::specialchars($row['language']).']</span>';
         };
     }
 }
