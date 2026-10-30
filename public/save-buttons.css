@@ -1,18 +1,30 @@
+.tl_submit_container .split-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
 .tl_submit_container .split-button #sbtog {
     display: none;
 }
 .tl_submit_container .split-button ul.invisible {
-    display: inline !important;
+    display: inline-flex !important;
     position: static;
     height: auto !important;
     overflow: visible !important;
     list-style: none;
     margin: 0;
     padding: 0;
+    border: 0 !important;
+    background: none !important;
+    gap: 4px;
+}
+.tl_submit_container .split-button ul.invisible::before,
+.tl_submit_container .split-button ul.invisible::after {
+    display: none !important;
 }
 .tl_submit_container .split-button ul.invisible li {
     display: inline;
 }
-.tl_submit_container .split-button ul.invisible .tl_submit {
-    margin-left: 4px;
+.tl_submit_container .split-button .tl_submit {
+    white-space: nowrap;
 }
