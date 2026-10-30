@@ -62,11 +62,7 @@ class HeaderToolbarMenuListener
         foreach (self::QUICKLINKS as $table => $labelKey) {
             $tree->addChild(
                 $factory->createItem($labelKey)
-                    ->setUri($this->router->generate('contao_backend', [
-                        'do' => 'themes',
-                        'table' => $table,
-                        'id' => $currentThemeId,
-                    ]))
+                    ->setUri($this->router->generate('contao_backend', $this->resolveQuicklinkParams($table, $currentThemeId)))
                     ->setLabel($GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey)
                     ->setLinkAttribute('class', 'icon-'.$table)
                     ->setLinkAttribute('title', $GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey)
@@ -104,5 +100,33 @@ class HeaderToolbarMenuListener
         }
 
         $tree->addChild($switcher);
+    }
+
+    /**
+     * Für "Seitenlayouts": gibt es fuer das aktuelle Theme genau ein
+     * Layout, direkt dorthin verlinken statt zur (dann unnoetigen)
+     * Listenansicht - bei keinem oder mehreren Layouts bleibt es bei der
+     * Uebersicht.
+     *
+     * @return array<string, int|string>
+     */
+    private function resolveQuicklinkParams(string $table, int|string $currentThemeId): array
+    {
+        $listParams = ['do' => 'themes', 'table' => $table, 'id' => $currentThemeId];
+
+        if ('tl_layout' !== $table) {
+            return $listParams;
+        }
+
+        $layoutIds = $this->connection->fetchFirstColumn(
+            'SELECT id FROM tl_layout WHERE pid = ?',
+            [$currentThemeId],
+        );
+
+        if (1 !== \count($layoutIds)) {
+            return $listParams;
+        }
+
+        return ['do' => 'themes', 'table' => $table, 'id' => $layoutIds[0], 'act' => 'edit'];
     }
 }
