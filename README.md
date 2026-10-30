@@ -50,7 +50,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [~] Markdown-Viewer — nicht relevant, wird nicht gebaut (kein Markdown-Einsatz in den Projekten).
 - [ ] Backend-Tabs
 - [x] Backend-Links (Kurzlinks) — bereits durch Contao-Core abgedeckt: "URL als Favorit speichern" + die **Favoriten**-Verwaltung (`do=favorites`), kein eigener Code nötig.
-- [ ] User-Redirects nach Login
+- [~] User-Redirects nach Login — nicht gewünscht, Standardverhalten (Dashboard) bleibt.
 - [ ] Layout-Button in der Seitenstruktur
 - [ ] Speichern-Buttons ohne Untermenü
 - [ ] Backend Full-Width
