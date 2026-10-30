@@ -14,9 +14,9 @@ use Imagine\Image\ImagineInterface;
 class ImageShrinker
 {
     private const MAX_FILE_SIZE = 1_000_000;
-    private const JPEG_QUALITY = 75;
+    private const JPEG_QUALITY = 65;
     private const PNG_COMPRESSION = 9;
-    private const WEBP_QUALITY = 75;
+    private const WEBP_QUALITY = 65;
 
     public function __construct(private readonly ImagineInterface $imagine)
     {
