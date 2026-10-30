@@ -3,6 +3,9 @@ services:
         autowire: true
         autoconfigure: true
         public: false
+        bind:
+            Imagine\Image\ImagineInterface: '@contao.image.imagine'
+            Symfony\Component\Filesystem\Filesystem: '@filesystem'
 
     Futuraweb\ContaoBackendSuite\:
         resource: '../src/'
