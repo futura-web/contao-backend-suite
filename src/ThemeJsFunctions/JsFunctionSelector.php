@@ -49,12 +49,35 @@ class JsFunctionSelector
     ];
 
     /**
+     * Funktionen, die nicht mehr als Checkbox angeboten werden und bei
+     * jedem Speichern zwangsweise deaktiviert (auskommentiert) werden -
+     * z.B. weil die Funktion durch eine reine CSS-Loesung ersetzt wurde.
+     * Die Datei selbst bleibt erhalten, nur der assembleFunctions.js.php
+     * -Eintrag wird stillgelegt.
+     *
+     * @var list<string>
+     */
+    private const RETIRED_FUNCTIONS = ['toTop'];
+
+    /**
+     * Funktionen, die immer aktiv sein sollen und daher keine eigene
+     * Checkbox brauchen - werden bei jedem Speichern zwangsweise aktiviert
+     * (z.B. "globalVars", das grundlegende globale Variablen bereitstellt,
+     * von denen andere Funktionen abhaengen).
+     *
+     * @var list<string>
+     */
+    private const ALWAYS_ACTIVE_FUNCTIONS = ['globalVars'];
+
+    /**
      * @var array<string, list<string>>
      */
     private const JS_TRIGGERED_SCSS_PARTIALS = [
         'dSlider' => ['slider'],
         'contaoModal' => ['modal', 'slider'],
         'dGallery' => ['gallery', 'slider'],
+        'beforeAfter' => ['before_after'],
+        'privacyNotice' => ['cookie'],
     ];
 
     public function __construct(
@@ -78,12 +101,12 @@ class JsFunctionSelector
         $projectSlug = $this->resolveProjectSlug((int) $dc->id);
         $active = array_keys(array_filter($this->getFunctionStates($projectSlug)));
 
-        // Versteckte Abhaengigkeiten (siehe HIDDEN_DEPENDENTS) haben keine
-        // eigene Checkbox - wuerden sie hier mitgespeichert, rendert
-        // Contao sie als "Unbekannte Option", weil getOptionsForDc() sie
-        // nicht mehr auflistet.
-        $hidden = array_merge(...array_values(self::HIDDEN_DEPENDENTS));
-        $active = array_values(array_diff($active, $hidden));
+        // Versteckte Abhaengigkeiten und stillgelegte Funktionen (siehe
+        // HIDDEN_DEPENDENTS / RETIRED_FUNCTIONS) haben keine eigene
+        // Checkbox - wuerden sie hier mitgespeichert, rendert Contao sie
+        // als "Unbekannte Option", weil getOptionsForDc() sie nicht mehr
+        // auflistet.
+        $active = array_values(array_diff($active, $this->excludedFunctionNames()));
 
         $this->connection->update(
             'tl_layout',
@@ -101,11 +124,11 @@ class JsFunctionSelector
             return [];
         }
 
-        $hidden = array_merge(...array_values(self::HIDDEN_DEPENDENTS));
+        $excluded = $this->excludedFunctionNames();
         $options = [];
 
         foreach ($this->getAvailableFunctions($this->resolveProjectSlug((int) $dc->id)) as $name) {
-            if (\in_array($name, $hidden, true)) {
+            if (\in_array($name, $excluded, true)) {
                 continue;
             }
 
@@ -128,6 +151,8 @@ class JsFunctionSelector
         }
 
         $selected = \is_array($unserialized = @unserialize((string) $raw)) ? $unserialized : [];
+        $selected = array_values(array_diff($selected, self::RETIRED_FUNCTIONS));
+        $selected = array_values(array_unique(array_merge($selected, self::ALWAYS_ACTIVE_FUNCTIONS)));
         $selected = $this->applyHiddenDependents($selected);
 
         $projectSlug = $this->resolveProjectSlug((int) $dc->id);
@@ -197,6 +222,21 @@ class JsFunctionSelector
         if ([] !== $parts) {
             Message::addConfirmation('JS-Funktionen '.implode('; ', $parts).'.');
         }
+    }
+
+    /**
+     * Alle Funktionsnamen, die keine eigene Checkbox haben: versteckte
+     * Abhaengigkeiten (HIDDEN_DEPENDENTS-Werte), stillgelegte Funktionen
+     * (RETIRED_FUNCTIONS) und immer aktive Funktionen
+     * (ALWAYS_ACTIVE_FUNCTIONS).
+     *
+     * @return list<string>
+     */
+    private function excludedFunctionNames(): array
+    {
+        $hidden = [] !== self::HIDDEN_DEPENDENTS ? array_merge(...array_values(self::HIDDEN_DEPENDENTS)) : [];
+
+        return array_values(array_unique(array_merge($hidden, self::RETIRED_FUNCTIONS, self::ALWAYS_ACTIVE_FUNCTIONS)));
     }
 
     /**

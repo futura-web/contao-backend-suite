@@ -16,10 +16,13 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * Partials gelten als manuell an/ausschaltbare "Features", nicht die
  * strukturellen Imports (Variablen, Header, Hauptnavi, ...).
  *
- * "Slider" und "Modal/Lightbox + Galerie-Grid" (_slider, _modal,
- * _gallery) stehen hier bewusst NICHT zur Auswahl - sie werden
+ * "Slider", "Modal/Lightbox + Galerie-Grid" (_slider, _modal, _gallery),
+ * "Vorher/Nachher-Vergleich" (_before_after) und "Cookie-Hinweis"
+ * (_cookie) stehen hier bewusst NICHT zur Auswahl - sie werden
  * automatisch anhand der passenden JS-Funktionen geschaltet, siehe
- * JsFunctionSelector::JS_TRIGGERED_SCSS_PARTIALS.
+ * JsFunctionSelector::JS_TRIGGERED_SCSS_PARTIALS. "Autoscroll" bleibt
+ * dagegen manuell schaltbar, da es auch ohne JS (rein per CSS) umsetzbar
+ * ist.
  */
 class ScssFeatureSelector
 {
@@ -32,8 +35,6 @@ class ScssFeatureSelector
         'forms' => ['label' => 'Formulare (_forms)', 'partials' => ['forms']],
         'stickyFooter' => ['label' => 'Sticky Footer (_sticky_footer)', 'partials' => ['sticky_footer']],
         'banner' => ['label' => 'Banner (_banner)', 'partials' => ['banner']],
-        'beforeAfter' => ['label' => 'Vorher/Nachher-Vergleich (_before_after)', 'partials' => ['before_after']],
-        'cookie' => ['label' => 'Cookie-Hinweis (_cookie)', 'partials' => ['cookie']],
         'autoscroll' => ['label' => 'Autoscroll (_autoscroll)', 'partials' => ['autoscroll']],
     ];
 
