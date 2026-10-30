@@ -51,6 +51,24 @@ class LayoutJsFunctionFieldInjector
             'sql' => 'blob NULL',
         ];
 
+        $dca['fields'][JsFunctionSelector::FIELD_NEW_NAME] = [
+            'label' => ['Neue JS-Funktion anlegen', 'Name einer neuen Funktion (z.B. "meineFunktion") - legt "js.<name>.js" an und traegt sie im gewaehlten Zeitpunkt-Bucket ein. Feld leert sich nach dem Speichern automatisch.'],
+            'exclude' => true,
+            'inputType' => 'text',
+            'eval' => ['tl_class' => 'w50', 'maxlength' => 64, 'placeholder' => 'z.B. meineFunktion'],
+            'sql' => "varchar(64) NOT NULL default ''",
+        ];
+
+        $dca['fields'][JsFunctionSelector::FIELD_NEW_BUCKET] = [
+            'label' => ['Zeitpunkt', 'Wann die neue Funktion aufgerufen wird.'],
+            'exclude' => true,
+            'inputType' => 'select',
+            'options' => array_keys(JsFunctionSelector::BUCKET_LABELS),
+            'reference' => JsFunctionSelector::BUCKET_LABELS,
+            'eval' => ['tl_class' => 'w50', 'includeBlankOption' => false],
+            'sql' => "varchar(32) NOT NULL default 'ready'",
+        ];
+
         $dca['config']['onload_callback'][] = function (DataContainer|null $dc = null): void {
             $this->selector->onLoad($dc);
         };
@@ -67,6 +85,7 @@ class LayoutJsFunctionFieldInjector
         PaletteManipulator::create()
             ->addLegend(self::LEGEND, $anchorExists ? self::ANCHOR_LEGEND : 'style_legend', PaletteManipulator::POSITION_AFTER)
             ->addField([self::FIELD], self::LEGEND, PaletteManipulator::POSITION_APPEND)
+            ->addField([JsFunctionSelector::FIELD_NEW_NAME, JsFunctionSelector::FIELD_NEW_BUCKET], self::LEGEND, PaletteManipulator::POSITION_APPEND)
             ->applyToPalette('default', 'tl_layout')
         ;
     }

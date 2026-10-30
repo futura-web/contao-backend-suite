@@ -24,15 +24,20 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * wird beim ersten Aktivieren neu in den Bucket "ready" eingefuegt
  * (haeufigster Standardfall: DOM-Ready-Funktionen).
  *
- * Zwei Kopplungen zu anderen Dateien:
+ * Kopplungen zu anderen Dateien/Feldern:
  * - HIDDEN_DEPENDENTS: eine Funktion, die technisch zwingend eine andere
  *   voraussetzt (z.B. "dSlider" braucht "dSliderDefines"), bekommt keine
  *   eigene Checkbox - ihr Zustand folgt automatisch dem der Hauptfunktion.
+ * - RETIRED_FUNCTIONS / ALWAYS_ACTIVE_FUNCTIONS: Funktionen ohne eigene
+ *   Checkbox, die bei jedem Speichern zwangsweise aus- bzw. eingeschaltet
+ *   werden.
  * - JS_TRIGGERED_SCSS_PARTIALS: manche "@import"-Partials in base.scss
- *   (Slider, Modal, Galerie) werden nicht ueber die separate
- *   SCSS-Features-Liste manuell geschaltet, sondern automatisch aktiv,
- *   sobald die passende JS-Funktion aktiv ist - so als waeren sie dort
- *   angehakt.
+ *   (Slider, Modal, Galerie, Vorher/Nachher, Cookie) werden nicht ueber
+ *   die separate SCSS-Features-Liste manuell geschaltet, sondern
+ *   automatisch aktiv, sobald die passende JS-Funktion aktiv ist - so als
+ *   waeren sie dort angehakt.
+ * - FIELD_NEW_NAME / FIELD_NEW_BUCKET: ein Textfeld + Zeitpunkt-Auswahl,
+ *   um eine komplett neue Funktion anzulegen (siehe processNewFunction()).
  */
 class JsFunctionSelector
 {
@@ -40,6 +45,26 @@ class JsFunctionSelector
     private const ASSEMBLE_FILE_RELATIVE_PATH = '/theme/js/php/assembleFunctions.js.php';
     private const BASE_SCSS_RELATIVE_PATH = '/theme/css/base.scss';
     private const DEFAULT_BUCKET = 'ready';
+
+    public const FIELD_NEW_NAME = 'backendSuiteNewJsFunctionName';
+    public const FIELD_NEW_BUCKET = 'backendSuiteNewJsFunctionBucket';
+
+    /**
+     * Zeitpunkt-Buckets, unter denen eine neu angelegte Funktion in
+     * assembleFunctions.js.php eingetragen werden kann - jeweils muss der
+     * Bucket-Schluessel bereits im $arrJsPaths-Array der Datei existieren.
+     *
+     * @var array<string, string>
+     */
+    public const BUCKET_LABELS = [
+        'ready' => 'Bei DOM Ready (ready)',
+        'scroll' => 'Beim Scrollen (scroll)',
+        'loaded' => 'Bei window.onload (loaded)',
+        'resize' => 'Bei Fenstergrößen-Änderung (resize)',
+        'base' => 'Sofort beim Laden, einmalig (base)',
+        'classes' => 'Sofort beim Laden, Klassen/Initialisierung (classes)',
+        'divers' => 'Diverses (divers)',
+    ];
 
     /**
      * @var array<string, list<string>>
@@ -164,6 +189,8 @@ class JsFunctionSelector
             return;
         }
 
+        $this->processNewFunction((int) $dc->id, $projectSlug, $path);
+
         $states = $this->getFunctionStates($projectSlug);
         $enabled = [];
         $disabled = [];
@@ -179,7 +206,7 @@ class JsFunctionSelector
 
             if (null === $isActive) {
                 if ($shouldBeActive) {
-                    $this->insertFunction($path, $name);
+                    $this->insertFunction($path, $name, self::DEFAULT_BUCKET);
                     $added[] = $name;
                 }
 
@@ -403,15 +430,15 @@ class JsFunctionSelector
         return true;
     }
 
-    private function insertFunction(string $path, string $name): void
+    private function insertFunction(string $path, string $name, string $bucket): bool
     {
         $content = file_get_contents($path);
 
         if (false === $content) {
-            return;
+            return false;
         }
 
-        $bucketPattern = '/(\''.preg_quote(self::DEFAULT_BUCKET, '/').'\'\h*=>\h*\[)(.*?)(\n(\h*)\],)/s';
+        $bucketPattern = '/(\''.preg_quote($bucket, '/').'\'\h*=>\h*\[)(.*?)(\n(\h*)\],)/s';
 
         $newContent = preg_replace_callback($bucketPattern, static function (array $m) use ($name): string {
             $indent = $m[4].'    ';
@@ -420,10 +447,67 @@ class JsFunctionSelector
         }, $content, 1, $count);
 
         if (null === $newContent || $count < 1) {
-            return;
+            return false;
         }
 
         file_put_contents($path, $newContent);
+
+        return true;
+    }
+
+    /**
+     * Legt eine komplett neue JS-Funktion an: schreibt die Stub-Datei
+     * "js.<name>.js" (falls noch nicht vorhanden) und traegt sie im
+     * gewaehlten Zeitpunkt-Bucket in assembleFunctions.js.php ein. Das
+     * Namens-Textfeld wird danach immer geleert - es ist eine
+     * Einmal-Aktion, kein persistenter Zustand (gleiches Muster wie das
+     * selbstleerende "Farben"-Feld in ColorImporter).
+     */
+    private function processNewFunction(int $layoutId, string $projectSlug, string $assemblePath): void
+    {
+        $name = trim((string) $this->connection->fetchOne(
+            'SELECT '.self::FIELD_NEW_NAME.' FROM tl_layout WHERE id = ?',
+            [$layoutId],
+        ));
+
+        if ('' === $name) {
+            return;
+        }
+
+        $bucket = (string) $this->connection->fetchOne(
+            'SELECT '.self::FIELD_NEW_BUCKET.' FROM tl_layout WHERE id = ?',
+            [$layoutId],
+        );
+
+        if (!isset(self::BUCKET_LABELS[$bucket])) {
+            $bucket = self::DEFAULT_BUCKET;
+        }
+
+        $this->connection->update('tl_layout', [self::FIELD_NEW_NAME => ''], ['id' => $layoutId]);
+
+        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $name)) {
+            Message::addError(sprintf('JS-Funktionen: "%s" ist kein gültiger Funktionsname (Buchstaben/Ziffern/Unterstrich, muss mit einem Buchstaben beginnen).', $name));
+
+            return;
+        }
+
+        if (\in_array($name, $this->getAvailableFunctions($projectSlug), true)) {
+            Message::addError(sprintf('JS-Funktionen: "%s" existiert bereits.', $name));
+
+            return;
+        }
+
+        $filePath = $this->projectDir.'/files/public/'.$projectSlug.self::FUNCTIONS_RELATIVE_DIR.'/js.'.$name.'.js';
+
+        if (!is_file($filePath)) {
+            file_put_contents($filePath, "\n    function {$name}(){\n\n    }\n");
+        }
+
+        if ($this->insertFunction($assemblePath, $name, $bucket)) {
+            Message::addConfirmation(sprintf('JS-Funktionen: "%s" wurde neu angelegt (js.%s.js) und im Bucket "%s" eingetragen.', $name, $name, self::BUCKET_LABELS[$bucket]));
+        } else {
+            Message::addError(sprintf('JS-Funktionen: Bucket "%s" wurde in assembleFunctions.js.php nicht gefunden - "%s" konnte nicht eingetragen werden.', $bucket, $name));
+        }
     }
 
     private function readArrayBlock(string $path): string|null
