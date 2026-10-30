@@ -13,3 +13,11 @@ services:
             - '../src/ContaoManager/'
             - '../src/DependencyInjection/'
             - '../src/ContaoBackendSuiteBundle.php'
+
+    # Public, da projektseitiger Legacy-DCA-Code (z.B. tl_theme.php in
+    # c5.futura-web.de) ihn direkt über System::getContainer()->get(...)
+    # abruft statt per Konstruktor-Injection - ohne "public: true" wird ein
+    # nur intern verwendeter Service vom Container wegoptimiert/inlined und
+    # ist dann ueber get() nicht mehr erreichbar.
+    Futuraweb\ContaoBackendSuite\ThemeFontColor\ColorImporter:
+        public: true
