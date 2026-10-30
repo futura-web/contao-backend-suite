@@ -27,5 +27,7 @@ class BackendAssetsListener
         }
 
         $GLOBALS['TL_CSS'][] = 'bundles/contaobackendsuite/save-buttons.css';
+        $GLOBALS['TL_CSS'][] = 'bundles/contaobackendsuite/version-badge.css';
+        $GLOBALS['TL_JAVASCRIPT'][] = 'bundles/contaobackendsuite/version-badge.js';
     }
 }
