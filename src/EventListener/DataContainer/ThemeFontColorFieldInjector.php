@@ -109,14 +109,22 @@ class ThemeFontColorFieldInjector
             return;
         }
 
-        $fieldList = implode(',', self::FIELDS);
+        $block = '{'.self::LEGEND.'},'.implode(',', self::FIELDS);
 
         foreach ($dca['palettes'] as $name => $palette) {
             if (!\is_string($palette) || str_contains($palette, 'backendSuiteFonts')) {
                 continue;
             }
 
-            $dca['palettes'][$name] = $palette.';{'.self::LEGEND.'},'.$fieldList;
+            // Direkt hinter "{config_legend}" einfuegen, damit der neue Tab
+            // gleich nach "Konfiguration" erscheint statt ganz am Ende -
+            // faellt auf reines Anhaengen zurueck, falls die Palette keinen
+            // config_legend-Abschnitt hat.
+            if (preg_match('/\{config_legend\}[^;]*/', $palette)) {
+                $dca['palettes'][$name] = preg_replace('/(\{config_legend\}[^;]*)/', '$1;'.$block, $palette, 1);
+            } else {
+                $dca['palettes'][$name] = $palette.';'.$block;
+            }
         }
     }
 }
