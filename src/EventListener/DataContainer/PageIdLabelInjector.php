@@ -7,9 +7,10 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 
 /**
- * Shows each page's ID next to its title in the page tree, so you can spot
- * the right record (e.g. to match it against a URL or a database query)
- * without opening it or checking the status bar link.
+ * Shows each page's ID next to its title in the page tree while the Shift
+ * key is held, so you can spot the right record (e.g. to match it against
+ * a URL or a database query) without opening it or checking the status bar
+ * link, and without cluttering the tree the rest of the time.
  */
 #[AsHook('loadDataContainer')]
 class PageIdLabelInjector
@@ -27,5 +28,8 @@ class PageIdLabelInjector
         }
 
         $labelConfig['format'] = '%s <span class="backend-suite-page-id">[ID: %s]</span>';
+
+        $GLOBALS['TL_CSS'][] = 'bundles/contaobackendsuite/backend-id.css';
+        $GLOBALS['TL_JAVASCRIPT'][] = 'bundles/contaobackendsuite/backend-id.js';
     }
 }

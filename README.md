@@ -45,7 +45,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Bild-Shrinker** — Bilder beim Hochladen automatisch komprimieren und Dateinamen bereinigen (siehe unten).
 - [x] **Sprache bei Startpunkten** — zeigt den Sprachcode einer Startseite (`type = root`) direkt im Seitenbaum an, z. B. „Startseite [de]".
 - [x] **ID-/Alias-Suche** — die Seiten-ID steht direkt neben dem Titel im Seitenbaum (z. B. „Startseite [ID: 1]"); der Seitenalias ist bereits über Contao-Core im Backend-Suchfeld durchsuchbar.
-- [ ] IDs bei Shift anzeigen
+- [x] **IDs bei Shift anzeigen** — die Seiten-ID (siehe ID-/Alias-Suche) ist standardmäßig ausgeblendet und erscheint nur, solange die Umschalttaste (Shift) gedrückt gehalten wird.
 - [ ] Textfeld-Längenanzeige
 - [ ] Markdown-Viewer
 - [ ] Backend-Tabs

@@ -1,0 +1,6 @@
+.backend-suite-page-id {
+    display: none;
+}
+body.backend-suite-show-ids .backend-suite-page-id {
+    display: inline;
+}
