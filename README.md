@@ -55,7 +55,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Speichern-Buttons ohne Untermenü** — "Speichern und neu" / "Speichern und duplizieren" stehen als eigene, immer sichtbare Buttons da statt hinter dem Dropdown-Pfeil versteckt zu sein.
 - [~] Backend Full-Width — nicht nötig, im c5-Projekt bereits vorhanden/gegeben.
 - [~] Reihenfolge der Backend-Module einstellbar — nicht gewünscht.
-- [ ] Neueste Contao-Version anzeigen
+- [x] Neueste Contao-Version anzeigen — bereits durch den Contao Manager abgedeckt (Versionsnummer + "neuste Version"-Hinweis bei jedem Update-Check), kein eigener Code nötig.
 
 ### Style-Selector: Benutzung
 
