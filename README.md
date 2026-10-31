@@ -65,14 +65,14 @@ Die Features werden nacheinander gebaut. Stand:
 4. Unter **Verfügbar in** die Bereiche ankreuzen, in denen der Style wählbar sein soll (z. B. Inhaltselemente, Artikel).
 5. In jedem passenden Formular (überall, wo es ein `cssID`- oder `cssClass`-Feld gibt) erscheint automatisch ein Mehrfachauswahlfeld "Style-Klassen". Die gewählten Styles werden beim Speichern in die vorhandene CSS-Klassen-Spalte eingemischt, bereits vorhandene, manuell eingetragene Klassen bleiben erhalten.
 
-### Toolbar: Quicklinks & Projekt-Umschalter
+### Toolbar: Quicklinks
 
 Bei OM-Backend stapeln sich in der Toolbar die Theme-Buttons (Stylesheets, Module, Seitenlayouts, Bildgrößen) für **jedes** vorhandene Theme untereinander. In Mehrprojekt-Installationen wird das schnell unübersichtlich.
 
-Hier zeigt das Backend-Kopfmenü stattdessen nur die Buttons des **aktuell erkannten** Themes ("Projekt"):
-
-- **Automatische Erkennung**: Sobald ein Modul, ein Seitenlayout, eine Bildgröße oder das Theme selbst bearbeitet bzw. aufgerufen wird, merkt sich die Session das zugehörige Theme automatisch.
-- **Umschalter**: Gibt es mehr als ein Theme, erscheint am Ende der Quicklinks ein Menüpunkt mit dem Namen des aktuellen Themes, der beim Hovern/Klicken alle anderen Themes als Auswahl anzeigt. Die Auswahl gilt für die laufende Session, bis automatisch oder manuell erneut gewechselt wird.
+- **Nur ein Theme**: Jedes Quicklink-Icon (Module, Seitenlayouts, Bildgrößen) ist ein direkter Link — genau wie bisher.
+- **Mehrere Themes**: Jedes Icon wird stattdessen zu einem Hover-Menü mit allen Projekten darunter:
+  - **Module**: pro Projekt ein Link zur Modul-Liste (ein Theme kann sehr viele Module haben, eine Einzelauflistung wäre unübersichtlich).
+  - **Seitenlayouts** und **Bildgrößen**: pro Projekt werden die einzelnen Einträge direkt verlinkt (z. B. jedes Layout einzeln) — bei leerem Projekt fällt es auf einen Link zur Liste zurück.
 - Kein `tl_style_sheet`-Quicklink: Contao 5 hat den klassischen internen CSS-Editor nicht mehr, nur noch echte CSS-Dateien.
 
 ### Bild-Shrinker: Komprimierung & Dateinamen-Bereinigung

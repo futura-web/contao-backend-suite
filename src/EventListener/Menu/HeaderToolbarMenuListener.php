@@ -7,15 +7,21 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\Menu;
 use Contao\Controller;
 use Contao\CoreBundle\Event\MenuEvent;
 use Doctrine\DBAL\Connection;
-use Futuraweb\ContaoBackendSuite\Toolbar\CurrentThemeTracker;
+use Knp\Menu\FactoryInterface;
+use Knp\Menu\ItemInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
- * Adds theme quicklinks (Module, Seitenlayouts, Bildgrößen) for the
- * currently detected theme to the backend header menu, plus a switcher
- * to change the current theme when there's more than one.
+ * Adds theme quicklinks (Module, Seitenlayouts, Bildgrößen) to the backend
+ * header menu.
+ *
+ * With a single theme, each quicklink is one direct link. With more than
+ * one theme, each quicklink instead becomes a hover menu listing every
+ * theme, and under each theme its individual records (layouts, image
+ * sizes) — or, for modules, just the one link to the module list, since a
+ * theme can have many modules but normally only a handful of layouts or
+ * image sizes worth linking to directly.
  *
  * This replaces OM-Backend's approach of stacking those buttons for every
  * theme at once: here only the current theme's buttons are shown.
@@ -30,10 +36,8 @@ class HeaderToolbarMenuListener
     ];
 
     public function __construct(
-        private readonly CurrentThemeTracker $tracker,
         private readonly Connection $connection,
         private readonly RouterInterface $router,
-        private readonly RequestStack $requestStack,
     ) {
     }
 
@@ -57,17 +61,11 @@ class HeaderToolbarMenuListener
         $factory = $event->getFactory();
         $tree = $event->getTree();
 
-        $currentThemeId = $this->tracker->getCurrentThemeId() ?? array_key_first($themes);
-
         foreach (self::QUICKLINKS as $table => $labelKey) {
             $tree->addChild(
-                $factory->createItem($labelKey)
-                    ->setUri($this->router->generate('contao_backend', $this->resolveQuicklinkParams($table, $currentThemeId)))
-                    ->setLabel($GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey)
-                    ->setLinkAttribute('class', 'icon-'.$table)
-                    ->setLinkAttribute('title', $GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey)
-                    ->setAttribute('class', 'backend-suite-header-icon')
-                    ->setExtra('translation_domain', false),
+                \count($themes) < 2
+                    ? $this->buildFlatLink($factory, $table, $labelKey, array_key_first($themes))
+                    : $this->buildNestedMenu($factory, $table, $labelKey, $themes),
             );
         }
 
@@ -75,31 +73,93 @@ class HeaderToolbarMenuListener
         // keine Icon-Darstellung mitbringt - ohne das Stylesheet erscheinen
         // die Links als reiner Text statt als Icon-Buttons vor "Handbuch".
         $GLOBALS['TL_CSS'][] = 'bundles/contaobackendsuite/backend/headerToolbar.css';
+    }
 
-        if (\count($themes) < 2) {
-            return;
-        }
+    private function buildFlatLink(FactoryInterface $factory, string $table, string $labelKey, int|string $themeId): ItemInterface
+    {
+        return $factory->createItem($labelKey)
+            ->setUri($this->router->generate('contao_backend', $this->resolveQuicklinkParams($table, $themeId)))
+            ->setLabel($this->label($labelKey))
+            ->setLinkAttribute('class', 'icon-'.$table)
+            ->setLinkAttribute('title', $this->label($labelKey))
+            ->setAttribute('class', 'backend-suite-header-icon')
+            ->setExtra('translation_domain', false);
+    }
 
-        $switcher = $factory->createItem('backendSuiteThemeSwitcher')
+    /**
+     * @param array<int|string, string> $themes
+     */
+    private function buildNestedMenu(FactoryInterface $factory, string $table, string $labelKey, array $themes): ItemInterface
+    {
+        $item = $factory->createItem($labelKey)
             ->setUri('#')
-            ->setLabel($themes[$currentThemeId] ?? (string) $currentThemeId)
-            ->setLinkAttribute('class', 'icon-tl_theme')
-            ->setLinkAttribute('title', $GLOBALS['TL_LANG']['tl_theme']['backendSuite']['switchProject'] ?? 'Projekt wechseln')
+            ->setLabel($this->label($labelKey))
+            ->setLinkAttribute('class', 'icon-'.$table)
+            ->setLinkAttribute('title', $this->label($labelKey))
+            ->setAttribute('class', 'backend-suite-header-icon')
             ->setExtra('translation_domain', false);
 
-        $currentParams = $this->requestStack->getCurrentRequest()?->query->all() ?? [];
+        foreach ($themes as $themeId => $themeName) {
+            $projectItem = $factory->createItem('backendSuiteProject_'.$table.'_'.$themeId)
+                ->setUri('#')
+                ->setLabel($themeName)
+                ->setExtra('translation_domain', false);
 
-        foreach ($themes as $id => $name) {
-            $switcher->addChild(
-                $factory->createItem('theme_'.$id)
-                    ->setUri($this->router->generate('contao_backend', [...$currentParams, 'backendSuiteTheme' => $id]))
-                    ->setLabel($name)
-                    ->setCurrent($id === $currentThemeId)
-                    ->setExtra('translation_domain', false),
-            );
+            foreach ($this->getChildLinks($factory, $table, $labelKey, $themeId) as $childItem) {
+                $projectItem->addChild($childItem);
+            }
+
+            $item->addChild($projectItem);
         }
 
-        $tree->addChild($switcher);
+        return $item;
+    }
+
+    /**
+     * @return list<ItemInterface>
+     */
+    private function getChildLinks(FactoryInterface $factory, string $table, string $labelKey, int|string $themeId): array
+    {
+        // Modules: a theme can have many, so just link to the list instead
+        // of flooding the menu with every single one.
+        if ('tl_module' === $table) {
+            return [
+                $factory->createItem('backendSuiteProjectLink_'.$table.'_'.$themeId)
+                    ->setUri($this->router->generate('contao_backend', ['do' => 'themes', 'table' => $table, 'id' => $themeId]))
+                    ->setLabel($this->label($labelKey))
+                    ->setExtra('translation_domain', false),
+            ];
+        }
+
+        $records = $this->connection->fetchAllKeyValue(
+            "SELECT id, name FROM {$table} WHERE pid = ? ORDER BY name",
+            [$themeId],
+        );
+
+        if ([] === $records) {
+            return [
+                $factory->createItem('backendSuiteProjectLink_'.$table.'_'.$themeId)
+                    ->setUri($this->router->generate('contao_backend', ['do' => 'themes', 'table' => $table, 'id' => $themeId]))
+                    ->setLabel($this->label($labelKey))
+                    ->setExtra('translation_domain', false),
+            ];
+        }
+
+        $items = [];
+
+        foreach ($records as $recordId => $recordName) {
+            $items[] = $factory->createItem('backendSuiteRecord_'.$table.'_'.$recordId)
+                ->setUri($this->router->generate('contao_backend', ['do' => 'themes', 'table' => $table, 'id' => $recordId, 'act' => 'edit']))
+                ->setLabel($recordName)
+                ->setExtra('translation_domain', false);
+        }
+
+        return $items;
+    }
+
+    private function label(string $labelKey): string
+    {
+        return $GLOBALS['TL_LANG']['tl_theme']['backendSuite'][$labelKey] ?? $labelKey;
     }
 
     /**
@@ -110,9 +170,9 @@ class HeaderToolbarMenuListener
      *
      * @return array<string, int|string>
      */
-    private function resolveQuicklinkParams(string $table, int|string $currentThemeId): array
+    private function resolveQuicklinkParams(string $table, int|string $themeId): array
     {
-        $listParams = ['do' => 'themes', 'table' => $table, 'id' => $currentThemeId];
+        $listParams = ['do' => 'themes', 'table' => $table, 'id' => $themeId];
 
         if ('tl_layout' !== $table) {
             return $listParams;
@@ -120,7 +180,7 @@ class HeaderToolbarMenuListener
 
         $layoutIds = $this->connection->fetchFirstColumn(
             'SELECT id FROM tl_layout WHERE pid = ?',
-            [$currentThemeId],
+            [$themeId],
         );
 
         if (1 !== \count($layoutIds)) {
