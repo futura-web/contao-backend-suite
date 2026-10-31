@@ -28,3 +28,6 @@
 .tl_submit_container .split-button .tl_submit {
     white-space: nowrap;
 }
+.tl_submit_container .split-button ul.invisible .tl_submit {
+    border: 1px solid #aaa !important;
+}
