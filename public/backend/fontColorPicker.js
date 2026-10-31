@@ -453,18 +453,30 @@
 	 * A MutationObserver re-runs init whenever a fresh, not-yet-enhanced
 	 * textarea shows up after such an in-place update.
 	 */
+	/*
+	 * Checking a one-time "already initialised" flag on the field itself
+	 * isn't reliable here: Contao's in-place update can reset the field
+	 * (e.g. undo the "display:none" and drop the inserted UI next to it)
+	 * while leaving the very same DOM node in place, which would leave a
+	 * flag on that node stuck from the first init. Instead, check whether
+	 * the enhancement is actually still there right now.
+	 */
+	function isEnhanced(field, markerClass) {
+		var prev = field.previousElementSibling;
+
+		return !!prev && prev.classList.contains(markerClass);
+	}
+
 	function initAll() {
 		var fontsField = document.getElementById('ctrl_backendSuiteFonts');
 
-		if (fontsField && 'TEXTAREA' === fontsField.tagName && !fontsField.dataset.bsInit) {
-			fontsField.dataset.bsInit = '1';
+		if (fontsField && 'TEXTAREA' === fontsField.tagName && !isEnhanced(fontsField, 'bs-fontpicker')) {
 			new FontPicker(fontsField);
 		}
 
 		var colorsField = document.getElementById('ctrl_backendSuiteColors');
 
-		if (colorsField && 'TEXTAREA' === colorsField.tagName && !colorsField.dataset.bsInit) {
-			colorsField.dataset.bsInit = '1';
+		if (colorsField && 'TEXTAREA' === colorsField.tagName && !isEnhanced(colorsField, 'bs-colors-current')) {
 			initColorsSummary(colorsField);
 		}
 	}
