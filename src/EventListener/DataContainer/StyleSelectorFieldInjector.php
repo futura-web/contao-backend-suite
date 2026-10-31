@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
+use Contao\Controller;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Contao\StringUtil;
@@ -54,6 +55,12 @@ class StyleSelectorFieldInjector
         if (isset($dca['fields'][self::FIELD])) {
             return;
         }
+
+        // "tl_style_selector" is only lazy-loaded by Contao when actually
+        // browsing that table, but this field gets injected into every
+        // table that has a cssID/cssClass field - without this, the label
+        // falls back to the raw field name on every other table.
+        Controller::loadLanguageFile('tl_style_selector');
 
         $dca['fields'][self::FIELD] = [
             'label' => &$GLOBALS['TL_LANG']['tl_style_selector']['fieldLabel'],

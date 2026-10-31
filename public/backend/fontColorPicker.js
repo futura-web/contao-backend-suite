@@ -446,17 +446,34 @@
 
 	/* -------------------------------------------------------------- Init */
 
-	document.addEventListener('DOMContentLoaded', function () {
+	/*
+	 * Contao's "Speichern" button submits and redisplays the form without a
+	 * real page navigation (no "beforeunload"), so a one-time
+	 * "DOMContentLoaded" listener only ever catches the very first load.
+	 * A MutationObserver re-runs init whenever a fresh, not-yet-enhanced
+	 * textarea shows up after such an in-place update.
+	 */
+	function initAll() {
 		var fontsField = document.getElementById('ctrl_backendSuiteFonts');
 
-		if (fontsField && 'TEXTAREA' === fontsField.tagName) {
+		if (fontsField && 'TEXTAREA' === fontsField.tagName && !fontsField.dataset.bsInit) {
+			fontsField.dataset.bsInit = '1';
 			new FontPicker(fontsField);
 		}
 
 		var colorsField = document.getElementById('ctrl_backendSuiteColors');
 
-		if (colorsField && 'TEXTAREA' === colorsField.tagName) {
+		if (colorsField && 'TEXTAREA' === colorsField.tagName && !colorsField.dataset.bsInit) {
+			colorsField.dataset.bsInit = '1';
 			initColorsSummary(colorsField);
 		}
-	});
+	}
+
+	if ('loading' === document.readyState) {
+		document.addEventListener('DOMContentLoaded', initAll);
+	} else {
+		initAll();
+	}
+
+	new MutationObserver(initAll).observe(document.body, { childList: true, subtree: true });
 })();

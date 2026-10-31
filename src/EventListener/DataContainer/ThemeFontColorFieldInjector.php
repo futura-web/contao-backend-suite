@@ -54,7 +54,7 @@ class ThemeFontColorFieldInjector
             'label' => &$GLOBALS['TL_LANG']['tl_theme']['backendSuite']['backendSuiteFonts'],
             'exclude' => true,
             'inputType' => 'textarea',
-            'eval' => ['tl_class' => 'clr long', 'style' => 'height:60px'],
+            'eval' => ['tl_class' => 'clr w50', 'style' => 'height:60px'],
             'sql' => 'text NULL',
         ];
 
@@ -81,7 +81,7 @@ class ThemeFontColorFieldInjector
             'label' => &$GLOBALS['TL_LANG']['tl_theme']['backendSuite']['backendSuiteColors'],
             'exclude' => true,
             'inputType' => 'textarea',
-            'eval' => ['tl_class' => 'clr w33', 'style' => 'height:100px', 'decodeEntities' => true],
+            'eval' => ['tl_class' => 'clr w50', 'style' => 'height:100px', 'decodeEntities' => true],
             'sql' => 'text NULL',
         ];
 
