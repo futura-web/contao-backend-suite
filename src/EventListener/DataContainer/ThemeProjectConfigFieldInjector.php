@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
+use Contao\Input;
 use Futuraweb\ContaoBackendSuite\ThemeFontColor\ColorImporter;
 use Futuraweb\ContaoBackendSuite\ThemeProjectConfig\BoilerplateRenamer;
 use Futuraweb\ContaoBackendSuite\ThemeProjectConfig\BorderImporter;
@@ -30,6 +31,7 @@ class ThemeProjectConfigFieldInjector
         private readonly BorderImporter $borderImporter,
         private readonly HeaderNavImporter $headerNavImporter,
         private readonly TypographyImporter $typographyImporter,
+        private readonly ColorImporter $colorImporter,
     ) {
     }
 
@@ -49,9 +51,26 @@ class ThemeProjectConfigFieldInjector
             $this->boilerplateRenamer->onSubmit($dc);
         };
 
+        $themeId = $this->currentThemeId();
+
+        // Fremde Projekte ohne unsere SCSS-Boilerplate-Struktur bekommen
+        // diese Felder gar nicht erst angezeigt, statt sie wirkungslos
+        // einzublenden. Lässt sich die Theme-ID nicht bestimmen (z. B.
+        // Listenansicht, Neuanlage), wird konservativ trotzdem eingehängt.
+        if (null !== $themeId && !$this->colorImporter->hasScssStructureForTheme($themeId)) {
+            return;
+        }
+
         $this->injectBorderFields($dca);
         $this->injectHeaderNavFields($dca);
         $this->injectTypographyFields($dca);
+    }
+
+    private function currentThemeId(): int|null
+    {
+        $id = Input::get('id');
+
+        return is_numeric($id) ? (int) $id : null;
     }
 
     private function injectBorderFields(array &$dca): void
@@ -338,6 +357,6 @@ class ThemeProjectConfigFieldInjector
 
     private function colorOptionsFor(DataContainer $dc): array
     {
-        return \Contao\System::getContainer()->get(ColorImporter::class)->getColorOptionsForDc($dc);
+        return $this->colorImporter->getColorOptionsForDc($dc);
     }
 }

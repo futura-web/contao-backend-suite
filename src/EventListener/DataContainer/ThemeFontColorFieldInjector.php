@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
+use Contao\Input;
 use Futuraweb\ContaoBackendSuite\ThemeFontColor\ColorImporter;
 use Futuraweb\ContaoBackendSuite\ThemeFontColor\FontImporter;
 
@@ -47,6 +48,16 @@ class ThemeFontColorFieldInjector
         $dca = &$GLOBALS['TL_DCA']['tl_theme'];
 
         if (isset($dca['fields']['backendSuiteFonts'])) {
+            return;
+        }
+
+        $themeId = $this->currentThemeId();
+
+        // Fremde Projekte ohne unsere SCSS-Boilerplate-Struktur bekommen
+        // diese Felder gar nicht erst angezeigt, statt sie wirkungslos
+        // einzublenden. Lässt sich die Theme-ID nicht bestimmen (z. B.
+        // Listenansicht, Neuanlage), wird konservativ trotzdem eingehängt.
+        if (null !== $themeId && !$this->colorImporter->hasScssStructureForTheme($themeId)) {
             return;
         }
 
@@ -126,5 +137,12 @@ class ThemeFontColorFieldInjector
                 $dca['palettes'][$name] = $palette.';'.$block;
             }
         }
+    }
+
+    private function currentThemeId(): int|null
+    {
+        $id = Input::get('id');
+
+        return is_numeric($id) ? (int) $id : null;
     }
 }

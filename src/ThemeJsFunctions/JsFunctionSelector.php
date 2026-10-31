@@ -113,6 +113,24 @@ class JsFunctionSelector
     }
 
     /**
+     * Ob die erwartete SCSS-/JS-Projektstruktur für dieses Layout (bzw.
+     * dessen Theme) überhaupt existiert - fremde Projekte ohne unser
+     * Boilerplate sollen das Feature gar nicht erst angezeigt bekommen.
+     */
+    public function hasScssStructureForLayout(int $layoutId): bool
+    {
+        return is_file($this->assembleFilePath($this->resolveProjectSlug($layoutId)));
+    }
+
+    public function hasScssStructureForTheme(int $themeId): bool
+    {
+        $templates = $this->connection->fetchOne('SELECT templates FROM tl_theme WHERE id = ?', [$themeId]);
+        $slug = false !== $templates && '' !== $templates ? basename((string) $templates) : 'project';
+
+        return is_file($this->assembleFilePath($slug));
+    }
+
+    /**
      * Beim Laden des Formulars den Checkbox-Zustand immer frisch aus der
      * Datei ableiten, statt einem evtl. veralteten DB-Wert zu vertrauen -
      * falls die Datei manuell bearbeitet wurde, stimmt die Anzeige trotzdem.

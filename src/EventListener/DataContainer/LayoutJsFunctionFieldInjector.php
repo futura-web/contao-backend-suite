@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
+use Contao\Input;
 use Futuraweb\ContaoBackendSuite\ThemeJsFunctions\JsFunctionSelector;
 
 /**
@@ -39,6 +40,15 @@ class LayoutJsFunctionFieldInjector
         $dca = &$GLOBALS['TL_DCA']['tl_layout'];
 
         if (isset($dca['fields'][self::FIELD])) {
+            return;
+        }
+
+        // Fremde Projekte ohne unsere SCSS-/JS-Boilerplate-Struktur
+        // bekommen dieses Feld gar nicht erst angezeigt, statt es
+        // wirkungslos einzublenden. Lässt sich weder Layout- noch
+        // Theme-ID bestimmen (z. B. Listenansicht), wird konservativ
+        // trotzdem eingehängt.
+        if (!$this->hasScssStructure()) {
             return;
         }
 
@@ -88,5 +98,22 @@ class LayoutJsFunctionFieldInjector
             ->addField([JsFunctionSelector::FIELD_NEW_NAME, JsFunctionSelector::FIELD_NEW_BUCKET], self::LEGEND, PaletteManipulator::POSITION_APPEND)
             ->applyToPalette('default', 'tl_layout')
         ;
+    }
+
+    private function hasScssStructure(): bool
+    {
+        $id = Input::get('id');
+
+        if (is_numeric($id)) {
+            return $this->selector->hasScssStructureForLayout((int) $id);
+        }
+
+        $pid = Input::get('pid');
+
+        if (is_numeric($pid)) {
+            return $this->selector->hasScssStructureForTheme((int) $pid);
+        }
+
+        return true;
     }
 }

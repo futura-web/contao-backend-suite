@@ -140,6 +140,21 @@ class ColorImporter
         return $options;
     }
 
+    /**
+     * Ob das für dieses Theme ermittelte Projekt die erwartete
+     * SCSS-Projektstruktur überhaupt hat (_vars_colors.scss als
+     * stellvertretender Marker für das ganze Boilerplate). Fremde Projekte
+     * ohne diese Struktur sollen die SCSS-schreibenden Formularfelder gar
+     * nicht erst angezeigt bekommen, statt sie wirkungslos einzublenden.
+     */
+    public function hasScssStructureForTheme(int $themeId): bool
+    {
+        $templates = $this->connection->fetchOne('SELECT templates FROM tl_theme WHERE id = ?', [$themeId]);
+        $projectSlug = basename((string) (false !== $templates && '' !== $templates ? $templates : 'project'));
+
+        return is_file($this->varsColorsPath($projectSlug));
+    }
+
     public function resolveLabel(int $themeId, string $varName): string
     {
         $varName = '$'.ltrim($varName, '$');

@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
+use Contao\Input;
 use Futuraweb\ContaoBackendSuite\ThemeScssFeatures\ScssFeatureSelector;
 
 /**
@@ -40,6 +41,14 @@ class LayoutScssFeatureFieldInjector
             return;
         }
 
+        // Fremde Projekte ohne unsere SCSS-Boilerplate-Struktur bekommen
+        // dieses Feld gar nicht erst angezeigt, statt es wirkungslos
+        // einzublenden. Lässt sich weder Layout- noch Theme-ID bestimmen
+        // (z. B. Listenansicht), wird konservativ trotzdem eingehängt.
+        if (!$this->hasScssStructure()) {
+            return;
+        }
+
         $dca['fields'][self::FIELD] = [
             'label' => ['SCSS-Features', 'Legt fest, welche optionalen @import-Zeilen in base.scss aktiv sind. Immer aktive Grund-Imports (Header, Hauptnavi, ...) stehen hier nicht zur Auswahl.'],
             'exclude' => true,
@@ -64,5 +73,22 @@ class LayoutScssFeatureFieldInjector
             ->addField([self::FIELD], self::LEGEND, PaletteManipulator::POSITION_APPEND)
             ->applyToPalette('default', 'tl_layout')
         ;
+    }
+
+    private function hasScssStructure(): bool
+    {
+        $id = Input::get('id');
+
+        if (is_numeric($id)) {
+            return $this->selector->hasScssStructureForLayout((int) $id);
+        }
+
+        $pid = Input::get('pid');
+
+        if (is_numeric($pid)) {
+            return $this->selector->hasScssStructureForTheme((int) $pid);
+        }
+
+        return true;
     }
 }
