@@ -46,7 +46,12 @@ class FolderNameSanitizerFieldInjector
 
     private function sanitizeIfFolder(string $value, DataContainer $dc): string
     {
-        $path = (string) ($dc->activeRecord->path ?? '');
+        // DC_Folder nutzt den Pfad selbst als "id" (keine DB-Zahl) - das
+        // funktioniert zuverlässig sowohl beim Umbenennen eines bestehenden
+        // Datensatzes als auch beim Anlegen eines neuen Ordners (dort ist
+        // $dc->activeRecord bewusst noch nicht gesetzt, solange der
+        // Platzhalter "__new__" bearbeitet wird - siehe DC_Folder::edit()).
+        $path = (string) $dc->id;
 
         if ('' === $path || !is_dir($this->projectDir.'/'.$path)) {
             return $value;

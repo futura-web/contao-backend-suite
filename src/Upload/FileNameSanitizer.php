@@ -36,6 +36,19 @@ class FileNameSanitizer
         return '' !== $extension ? $baseName.'.'.$extension : $baseName;
     }
 
+    /**
+     * Same cleanup as sanitize(), but without the ".min" marker - for
+     * uploaded documents that aren't images and therefore never get
+     * shrunk, so a "minified" marker would be misleading.
+     */
+    public function sanitizeDocumentName(string $fileName): string
+    {
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $baseName = $this->slug(pathinfo($fileName, PATHINFO_FILENAME));
+
+        return '' !== $extension ? $baseName.'.'.$extension : $baseName;
+    }
+
     public function sanitizeFolderName(string $folderName): string
     {
         return $this->slug($folderName);

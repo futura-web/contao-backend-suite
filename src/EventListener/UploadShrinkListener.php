@@ -48,10 +48,7 @@ class UploadShrinkListener
     private function processFile(string $relativePath): void
     {
         $extension = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
-
-        if (!\in_array($extension, self::IMAGE_EXTENSIONS, true)) {
-            return;
-        }
+        $isImage = \in_array($extension, self::IMAGE_EXTENSIONS, true);
 
         $absolutePath = $this->projectDir.'/'.$relativePath;
 
@@ -60,7 +57,7 @@ class UploadShrinkListener
         }
 
         // GIFs may be animated; resizing would only keep the first frame.
-        if ('gif' !== $extension) {
+        if ($isImage && 'gif' !== $extension) {
             try {
                 $this->shrinker->shrink($absolutePath);
             } catch (\Throwable) {
@@ -70,7 +67,10 @@ class UploadShrinkListener
 
         $directory = \dirname($relativePath);
         $fileName = basename($relativePath);
-        $sanitizedName = $this->sanitizer->sanitize($fileName);
+        // Nur Bilder gelten als "minified" (".min"-Marker) - andere
+        // Dokumente werden nur bereinigt (lowercase, Umlaute, Leerzeichen),
+        // ohne diesen irreführenden Marker.
+        $sanitizedName = $isImage ? $this->sanitizer->sanitize($fileName) : $this->sanitizer->sanitizeDocumentName($fileName);
 
         if ($sanitizedName === $fileName) {
             return;
