@@ -64,6 +64,9 @@ class ThemeProjectConfigFieldInjector
         $this->injectBorderFields($dca);
         $this->injectHeaderNavFields($dca);
         $this->injectTypographyFields($dca);
+
+        error_log('BACKEND_SUITE_DEBUG palette='.($dca['palettes']['default'] ?? 'MISSING'));
+        error_log('BACKEND_SUITE_DEBUG has projectTextFontSize field='.(isset($dca['fields']['projectTextFontSize']) ? 'yes' : 'no'));
     }
 
     private function currentThemeId(): int|null
