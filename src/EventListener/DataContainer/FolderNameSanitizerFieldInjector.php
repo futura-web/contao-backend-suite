@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
-use Contao\CoreBundle\DependencyInjection\Attribute\Autowire;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Futuraweb\ContaoBackendSuite\Upload\FileNameSanitizer;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Cleans up folder names the same way the image shrinker cleans up
