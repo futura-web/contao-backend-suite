@@ -36,3 +36,30 @@ a.icon-tl_layout {
 a.icon-tl_image_size {
     background-image: url("/system/themes/flexible/icons/sizes.svg");
 }
+
+/*
+ * Core's own hover/click menu toggling only wires up the special
+ * button[aria-expanded] markup it renders for its own menus (e.g. the
+ * user profile menu) - our KnpMenu-rendered items don't get that markup,
+ * so the nested project submenus need a plain CSS :hover reveal instead.
+ */
+#tmenu > li.backend-suite-header-icon:hover > ul.menu_level_1,
+#tmenu > li.backend-suite-header-icon:focus-within > ul.menu_level_1 {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#tmenu > li.backend-suite-header-icon ul.menu_level_1 > li:hover > ul.menu_level_2,
+#tmenu > li.backend-suite-header-icon ul.menu_level_1 > li:focus-within > ul.menu_level_2 {
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Indent the per-project records so they read as a sub-list, not flat siblings. */
+#tmenu > li.backend-suite-header-icon ul.menu_level_2 {
+    padding-left: 16px;
+}
+
+#tmenu > li.backend-suite-header-icon ul.menu_level_1 > li > a {
+    font-weight: 600;
+}
