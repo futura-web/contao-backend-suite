@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Futuraweb\ContaoBackendSuite\Upload;
 
 /**
- * Rewrites an uploaded image's filename into a clean, predictable form:
- * lowercase, spaces become underscores, umlauts/diacritics are
- * transliterated, and a ".min" marker is inserted before the extension
- * (once — re-running this on an already-sanitized name is a no-op).
+ * Rewrites an uploaded image's filename (or a folder name) into a clean,
+ * predictable form: lowercase, spaces become underscores,
+ * umlauts/diacritics are transliterated. For files, a ".min" marker is
+ * inserted before the extension (once — re-running this on an
+ * already-sanitized name is a no-op).
  */
 class FileNameSanitizer
 {
@@ -25,27 +26,31 @@ class FileNameSanitizer
 
     public function sanitize(string $fileName): string
     {
-        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
-        $baseName = pathinfo($fileName, PATHINFO_FILENAME);
-
-        $baseName = $this->transliterate($baseName);
-        $baseName = strtolower($baseName);
-        $baseName = str_replace(' ', '_', $baseName);
-        $baseName = preg_replace('/[^a-z0-9_.-]/', '', $baseName) ?? $baseName;
-        $baseName = preg_replace('/_+/', '_', $baseName) ?? $baseName;
-        $baseName = trim($baseName, '_.-');
-
-        if ('' === $baseName) {
-            $baseName = 'file';
-        }
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $baseName = $this->slug(pathinfo($fileName, PATHINFO_FILENAME));
 
         if (!str_ends_with($baseName, '.min')) {
             $baseName .= '.min';
         }
 
-        $extension = strtolower($extension);
-
         return '' !== $extension ? $baseName.'.'.$extension : $baseName;
+    }
+
+    public function sanitizeFolderName(string $folderName): string
+    {
+        return $this->slug($folderName);
+    }
+
+    private function slug(string $name): string
+    {
+        $name = $this->transliterate($name);
+        $name = strtolower($name);
+        $name = str_replace(' ', '_', $name);
+        $name = preg_replace('/[^a-z0-9_.-]/', '', $name) ?? $name;
+        $name = preg_replace('/_+/', '_', $name) ?? $name;
+        $name = trim($name, '_.-');
+
+        return '' !== $name ? $name : 'file';
     }
 
     private function transliterate(string $value): string
