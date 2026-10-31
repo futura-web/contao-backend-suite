@@ -487,5 +487,9 @@
 		initAll();
 	}
 
-	new MutationObserver(initAll).observe(document.body, { childList: true, subtree: true });
+	// document.documentElement statt document.body: das Script laeuft im
+	// <head>, bevor <body> existiert - observe(null) wuerde sofort eine
+	// Exception werfen und den Observer nie erstellen (genau das war der
+	// Grund, warum das Reinit nach "Speichern" nie funktioniert hat).
+	new MutationObserver(initAll).observe(document.documentElement, { childList: true, subtree: true });
 })();
