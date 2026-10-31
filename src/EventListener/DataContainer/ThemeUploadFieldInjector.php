@@ -38,7 +38,20 @@ class ThemeUploadFieldInjector
         ];
 
         if (isset($dca['palettes']['default']) && !str_contains($dca['palettes']['default'], self::FIELD)) {
-            $dca['palettes']['default'] .= ';{backend_suite_legend},'.self::FIELD;
+            $block = '{backend_suite_legend},'.self::FIELD;
+
+            // Insert right before the fonts/colors legend when it's already
+            // there, so this toggle doesn't end up after it - otherwise
+            // just append like before.
+            if (str_contains($dca['palettes']['default'], '{backend_suite_font_color_legend}')) {
+                $dca['palettes']['default'] = str_replace(
+                    '{backend_suite_font_color_legend}',
+                    $block.';{backend_suite_font_color_legend}',
+                    $dca['palettes']['default'],
+                );
+            } else {
+                $dca['palettes']['default'] .= ';'.$block;
+            }
         }
     }
 }

@@ -1,11 +1,16 @@
 (function () {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', function () {
+    function run() {
         var versionBlock = document.querySelector('#left .version');
         var title = document.querySelector('.app-title');
 
         if (!versionBlock || !title) {
+            return;
+        }
+
+        // Already done and the sidebar hasn't been reset since - nothing to do.
+        if ('none' === versionBlock.style.display && title.nextElementSibling && title.nextElementSibling.classList.contains('backend-suite-contao-version')) {
             return;
         }
 
@@ -17,9 +22,23 @@
 
         versionBlock.style.display = 'none';
 
-        var badge = document.createElement('span');
+        var badge = title.nextElementSibling && title.nextElementSibling.classList.contains('backend-suite-contao-version')
+            ? title.nextElementSibling
+            : document.createElement('span');
+
         badge.className = 'backend-suite-contao-version';
         badge.textContent = 'v' + match[0];
-        title.insertAdjacentElement('afterend', badge);
-    });
+
+        if (badge.parentNode !== title.parentNode) {
+            title.insertAdjacentElement('afterend', badge);
+        }
+    }
+
+    if ('loading' === document.readyState) {
+        document.addEventListener('DOMContentLoaded', run);
+    } else {
+        run();
+    }
+
+    new MutationObserver(run).observe(document.body, { childList: true, subtree: true });
 })();
