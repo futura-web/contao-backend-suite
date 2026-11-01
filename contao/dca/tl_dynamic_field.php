@@ -47,15 +47,21 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
     // + submitOnChange): "contentElementType" nur bei Zieltabelle
     // "Inhaltselemente"; "optionsSource" + "selectOptions" (Hilfetext
     // dort erklärt, dass Letzteres nur bei Quelle "Frei eingetippt"
-    // greift) zusammen nur bei Feldtyp "Select". Bewusst EINE Ebene
-    // statt verschachtelter Selektoren ("optionsSource" selbst als
-    // weiterer Selector für "selectOptions") - das hat Contaos
-    // Subpaletten-Auflösung in der Praxis nicht zuverlässig dargestellt
-    // (Feld blieb komplett unsichtbar, auch bei bereits gespeichertem
-    // Wert).
+    // greift) zusammen nur bei Feldtyp "Select".
+    //
+    // WICHTIG zum Schlüsselformat: Contaos PaletteBuilder::getPalette()
+    // sucht bei einem NICHT-Checkbox-Selektorfeld (hier: zwei
+    // select-Felder) unter dem Schlüssel "<Feldname>_<Wert>"
+    // (z.B. "fieldType_select"), NICHT einfach unter dem Wert allein
+    // (z.B. "select") - nur ein einzelnes, nicht-multiples
+    // Checkbox-Feld würde den Wert als eigenen Schlüssel verwenden
+    // (siehe core-bundle/src/DataContainer/PaletteBuilder.php). Mit dem
+    // falschen Schlüssel bleibt das Feld bei JEDEM Wert unsichtbar, ohne
+    // Fehlermeldung - genau das war die Ursache der vorherigen beiden
+    // fehlgeschlagenen Versuche.
     'subpalettes' => [
-        DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE => 'contentElementType',
-        DynamicFieldTypeRegistry::SELECT => 'optionsSource,selectOptions',
+        'targetTable_'.DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE => 'contentElementType',
+        'fieldType_'.DynamicFieldTypeRegistry::SELECT => 'optionsSource,selectOptions',
     ],
     'fields' => [
         'id' => [
