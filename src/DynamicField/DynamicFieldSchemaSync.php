@@ -59,6 +59,14 @@ class DynamicFieldSchemaSync
             return;
         }
 
+        if (DynamicFieldTypeRegistry::SELECT === (string) $row['fieldType']
+            && !isset(DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS[(string) $row['optionsSource']])
+        ) {
+            Message::addError('Feld-Builder: Bitte eine Optionsquelle wählen, Feld wurde nicht angelegt.');
+
+            return;
+        }
+
         $fieldName = $this->resolveFieldName($row);
 
         if ($fieldName !== (string) $row['fieldName']) {

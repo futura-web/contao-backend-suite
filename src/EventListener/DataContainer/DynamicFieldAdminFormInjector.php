@@ -106,6 +106,11 @@ class DynamicFieldAdminFormInjector
         // geändert würde das Feld aus der Form des bisherigen Typs
         // verschwinden, ohne dass jemand das erwartet.
         $dca['fields']['contentElementType']['eval']['readonly'] = true;
+        // "optionsSource" bestimmt, wie gespeicherte Werte zu
+        // interpretieren sind (freier Text vs. eine ID aus tl_module/
+        // tl_form/tl_content) - ein nachträglicher Wechsel würde bereits
+        // gespeicherte Werte falsch auslegen.
+        $dca['fields']['optionsSource']['eval']['readonly'] = true;
         // "customFieldName" bestimmt den technischen Namen nur beim
         // ALLERERSTEN Speichern (siehe DynamicFieldSchemaSync::
         // resolveFieldName(), bricht bei bereits gesetztem "fieldName"

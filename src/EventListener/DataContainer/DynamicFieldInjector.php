@@ -93,8 +93,101 @@ class DynamicFieldInjector
                 'sql' => $this->typeRegistry->sqlFor((string) $row['fieldType']),
             ];
 
+            if (DynamicFieldTypeRegistry::SELECT === (string) $row['fieldType']) {
+                $this->applyReferenceOptions($dca['fields'][$fieldName], (string) $row['optionsSource']);
+            }
+
             $this->injectIntoPalette($table, $paletteKey, $dca, $row, $fieldName);
         }
+    }
+
+    /**
+     * Für Select-Felder mit optionsSource "module"/"form"/"content":
+     * ersetzt die (bei "frei" aus selectOptions geparsten) Optionen
+     * durch die tatsächlich vorhandenen Datensätze der jeweiligen
+     * Tabelle. Bleibt bei "frei" (oder einem unbekannten Wert)
+     * unverändert.
+     *
+     * @param array<string, mixed> $field
+     */
+    private function applyReferenceOptions(array &$field, string $source): void
+    {
+        $options = match ($source) {
+            DynamicFieldTypeRegistry::SOURCE_MODULE => $this->fetchOptions('tl_module', 'name', 100),
+            DynamicFieldTypeRegistry::SOURCE_FORM => $this->fetchOptions('tl_form', 'title', 100),
+            DynamicFieldTypeRegistry::SOURCE_CONTENT => $this->fetchContentElementOptions(),
+            default => null,
+        };
+
+        if (null === $options) {
+            return;
+        }
+
+        $field['options'] = array_keys($options);
+        $field['reference'] = $options;
+    }
+
+    /**
+     * @return array<string, string> id => Label
+     */
+    private function fetchOptions(string $table, string $labelColumn, int $limit): array
+    {
+        try {
+            // $table/$labelColumn/$limit kommen ausschließlich aus
+            // hartcodierten Aufrufen innerhalb dieser Klasse (nie aus
+            // Nutzereingabe) - direkte Interpolation ist hier sicher und
+            // umgeht PDOs manchmal eigenwilliges LIMIT-Parameter-Binding.
+            $rows = $this->connection->fetchAllAssociative(
+                "SELECT id, {$labelColumn} AS label FROM {$table} ORDER BY {$labelColumn} ASC LIMIT {$limit}",
+            );
+        } catch (DbalException) {
+            return [];
+        }
+
+        $options = [];
+
+        foreach ($rows as $row) {
+            $label = trim((string) $row['label']);
+            $options[(string) $row['id']] = '' !== $label ? $label : '#'.$row['id'];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Inhaltselemente haben keinen einzelnen Titel - das Label wird aus
+     * Typ + Überschrift/Text zusammengesetzt. Begrenzt auf die zuletzt
+     * bearbeiteten, da es pro Website sehr viele geben kann (die
+     * "chosen"-Auswahl im Formular bleibt trotzdem durchsuchbar).
+     *
+     * @return array<string, string> id => Label
+     */
+    private function fetchContentElementOptions(): array
+    {
+        try {
+            $rows = $this->connection->fetchAllAssociative(
+                'SELECT id, type, headline, text FROM tl_content ORDER BY tstamp DESC LIMIT 500',
+            );
+        } catch (DbalException) {
+            return [];
+        }
+
+        $options = [];
+
+        foreach ($rows as $row) {
+            // "headline" liegt bei Inhaltselementen meist serialisiert
+            // vor (['value' => ..., 'unit' => 'h2']), bei älteren
+            // Datensätzen manchmal noch als reiner String - deserialize
+            // mit $blnArray=true deckt beides sicher ab.
+            $headlineData = \Contao\StringUtil::deserialize($row['headline'] ?? '', true);
+            $headline = trim((string) ($headlineData['value'] ?? ''));
+            $excerpt = '' !== $headline ? $headline : trim(strip_tags((string) ($row['text'] ?? '')));
+            $excerpt = mb_substr($excerpt, 0, 60);
+
+            $options[(string) $row['id']] = sprintf('[%s] %s (ID %d)', $row['type'], '' !== $excerpt ? $excerpt : '–', $row['id']);
+        }
+
+        return $options;
     }
 
     /**

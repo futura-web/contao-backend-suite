@@ -25,7 +25,7 @@ class DynamicFieldSnippetBuilder
             return '<p class="tl_info">Das Snippet erscheint hier nach dem ersten Speichern.</p>';
         }
 
-        $snippet = $this->buildSnippet((string) $record->fieldType, $fieldName);
+        $snippet = $this->buildSnippet((string) $record->fieldType, $fieldName, (string) ($record->optionsSource ?? ''));
         $rows = max(3, substr_count($snippet, "\n") + 1);
 
         return sprintf(
@@ -37,8 +37,37 @@ class DynamicFieldSnippetBuilder
         );
     }
 
-    private function buildSnippet(string $fieldType, string $fieldName): string
+    private function buildSnippet(string $fieldType, string $fieldName, string $optionsSource): string
     {
+        if (DynamicFieldTypeRegistry::SELECT === $fieldType && DynamicFieldTypeRegistry::SOURCE_MODULE === $optionsSource) {
+            return <<<PHP
+                <?php if (\$this->{$fieldName}): ?>
+                    <?= \Contao\Controller::getFrontendModule(\$this->{$fieldName}) ?>
+                <?php endif; ?>
+                PHP;
+        }
+
+        if (DynamicFieldTypeRegistry::SELECT === $fieldType && DynamicFieldTypeRegistry::SOURCE_FORM === $optionsSource) {
+            return <<<PHP
+                <?php if (\$this->{$fieldName}): ?>
+                    <?php
+                        \$dynFieldFormContent = new \Contao\ContentModel();
+                        \$dynFieldFormContent->type = 'form';
+                        \$dynFieldFormContent->form = \$this->{$fieldName};
+                        echo \Contao\Controller::getContentElement(\$dynFieldFormContent);
+                    ?>
+                <?php endif; ?>
+                PHP;
+        }
+
+        if (DynamicFieldTypeRegistry::SELECT === $fieldType && DynamicFieldTypeRegistry::SOURCE_CONTENT === $optionsSource) {
+            return <<<PHP
+                <?php if (\$this->{$fieldName} && (\$dynFieldContentModel = \Contao\ContentModel::findByPk(\$this->{$fieldName}))): ?>
+                    <?= \Contao\Controller::getContentElement(\$dynFieldContentModel) ?>
+                <?php endif; ?>
+                PHP;
+        }
+
         if (DynamicFieldTypeRegistry::GALLERY === $fieldType) {
             return <<<PHP
                 <?php if (\$images = \Contao\StringUtil::deserialize(\$this->{$fieldName}, true)): ?>

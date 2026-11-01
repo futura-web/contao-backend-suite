@@ -29,6 +29,23 @@ class DynamicFieldTypeRegistry
         self::LINK => 'Link/Button (URL)',
     ];
 
+    // Nur für Feldtyp "Select" relevant: woher die Optionen kommen.
+    // "module"/"form"/"content" werden nicht hier, sondern von
+    // DynamicFieldInjector zur Laufzeit per DB-Abfrage aufgelöst (siehe
+    // dort resolveReferenceOptions()) - diese Klasse bleibt DB-frei.
+    public const SOURCE_FREE = 'free';
+    public const SOURCE_MODULE = 'module';
+    public const SOURCE_FORM = 'form';
+    public const SOURCE_CONTENT = 'content';
+
+    /** @var array<string, string> */
+    public const OPTIONS_SOURCE_LABELS = [
+        self::SOURCE_FREE => 'Frei eingetippte Optionen',
+        self::SOURCE_MODULE => 'Vorhandenes Modul einbinden',
+        self::SOURCE_FORM => 'Vorhandenes Formular einbinden',
+        self::SOURCE_CONTENT => 'Vorhandenes Inhaltselement einbinden',
+    ];
+
     public function sqlFor(string $type): string
     {
         return match ($type) {
@@ -62,9 +79,12 @@ class DynamicFieldTypeRegistry
                 'label' => $label,
                 'exclude' => true,
                 'inputType' => 'select',
+                // Bei "module"/"form"/"content" werden "options"/
+                // "reference" von DynamicFieldInjector nach diesem
+                // Aufruf mit den echten Datensätzen überschrieben.
                 'options' => array_keys($this->parseSelectOptions((string) $row['selectOptions'])),
                 'reference' => $this->parseSelectOptions((string) $row['selectOptions']),
-                'eval' => ['tl_class' => 'w50', 'includeBlankOption' => true],
+                'eval' => ['tl_class' => 'w50', 'includeBlankOption' => true, 'chosen' => true],
             ],
             self::CHECKBOX => [
                 'label' => $label,
