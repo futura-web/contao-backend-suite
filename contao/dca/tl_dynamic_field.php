@@ -40,20 +40,22 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
         ],
     ],
     'palettes' => [
-        '__selector__' => ['targetTable', 'fieldType', 'optionsSource'],
+        '__selector__' => ['targetTable', 'fieldType'],
         'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,customFieldName;{snippet_legend},snippetPreview',
     ],
-    // Verschachtelte Subpaletten, gesteuert über die Selector-Felder
-    // oben (__selector__ + submitOnChange): "contentElementType" nur
-    // bei Zieltabelle "Inhaltselemente"; "optionsSource" nur bei Feldtyp
-    // "Select"; "selectOptions" wiederum nur, wenn optionsSource auf
-    // "Frei eingetippte Optionen" steht (bei "Modul"/"Formular"/
-    // "Inhaltselement" kommen die Optionen automatisch aus den
-    // vorhandenen Datensätzen, siehe DynamicFieldInjector).
+    // Subpaletten, gesteuert über die Selector-Felder oben (__selector__
+    // + submitOnChange): "contentElementType" nur bei Zieltabelle
+    // "Inhaltselemente"; "optionsSource" + "selectOptions" (Hilfetext
+    // dort erklärt, dass Letzteres nur bei Quelle "Frei eingetippt"
+    // greift) zusammen nur bei Feldtyp "Select". Bewusst EINE Ebene
+    // statt verschachtelter Selektoren ("optionsSource" selbst als
+    // weiterer Selector für "selectOptions") - das hat Contaos
+    // Subpaletten-Auflösung in der Praxis nicht zuverlässig dargestellt
+    // (Feld blieb komplett unsichtbar, auch bei bereits gespeichertem
+    // Wert).
     'subpalettes' => [
         DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE => 'contentElementType',
-        DynamicFieldTypeRegistry::SELECT => 'optionsSource',
-        DynamicFieldTypeRegistry::SOURCE_FREE => 'selectOptions',
+        DynamicFieldTypeRegistry::SELECT => 'optionsSource,selectOptions',
     ],
     'fields' => [
         'id' => [
@@ -115,14 +117,14 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'exclude' => true,
             'search' => true,
             'inputType' => 'text',
-            'eval' => ['mandatory' => true, 'maxlength' => 128, 'tl_class' => 'w50'],
+            'eval' => ['mandatory' => true, 'maxlength' => 128, 'tl_class' => 'clr w50'],
             'sql' => "varchar(128) NOT NULL default ''",
         ],
         'fieldDescription' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldDescription'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 255, 'tl_class' => 'clr w50'],
+            'eval' => ['maxlength' => 255, 'tl_class' => 'w50'],
             'sql' => "varchar(255) NOT NULL default ''",
         ],
         'customFieldName' => [
@@ -138,7 +140,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'select',
             'options' => array_keys(DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS),
             'reference' => DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS,
-            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'clr w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
             'sql' => "varchar(32) NOT NULL default ''",
         ],
         'selectOptions' => [
