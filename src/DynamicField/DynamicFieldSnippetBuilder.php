@@ -53,6 +53,10 @@ class DynamicFieldSnippetBuilder
                 PHP;
         }
 
-        return "<?= \$this->{$fieldName} ?>";
+        return <<<PHP
+            <?php if (\$this->{$fieldName}): ?>
+                <?= \$this->{$fieldName} ?>
+            <?php endif; ?>
+            PHP;
     }
 }

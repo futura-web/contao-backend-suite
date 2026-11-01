@@ -39,7 +39,15 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
         ],
     ],
     'palettes' => [
-        'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,selectOptions,galleryUploadFolder;{snippet_legend},snippetPreview',
+        '__selector__' => ['fieldType'],
+        'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription;{snippet_legend},snippetPreview',
+    ],
+    // "selectOptions" nur bei Select/Checkbox - Contaos Standard-
+    // Subpalette, gesteuert über den "fieldType"-Selector oben (siehe
+    // __selector__ + submitOnChange).
+    'subpalettes' => [
+        'select' => 'selectOptions',
+        'checkbox' => 'selectOptions',
     ],
     'fields' => [
         'id' => [
@@ -84,7 +92,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'select',
             'options' => array_keys(DynamicFieldTypeRegistry::LABELS),
             'reference' => DynamicFieldTypeRegistry::LABELS,
-            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
             'sql' => "varchar(32) NOT NULL default ''",
         ],
         'fieldLabel' => [
@@ -108,13 +116,6 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'textarea',
             'eval' => ['tl_class' => 'clr', 'rows' => 4, 'placeholder' => "wert1:Label 1\nwert2:Label 2", 'decodeEntities' => true],
             'sql' => 'text NULL',
-        ],
-        'galleryUploadFolder' => [
-            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['galleryUploadFolder'],
-            'exclude' => true,
-            'inputType' => 'fileTree',
-            'eval' => ['fieldType' => 'radio', 'files' => false, 'tl_class' => 'clr'],
-            'sql' => "binary(16) NULL",
         ],
         'fieldName' => [
             // Technischer Spaltenname, automatisch aus "fieldLabel"

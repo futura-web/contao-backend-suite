@@ -61,6 +61,64 @@ class DynamicFieldSchemaSync
     }
 
     /**
+     * save_callback für das "Aktiv"-Feld: verhindert, dass ein Feld
+     * deaktiviert wird (= aus der Zieltabelle verschwindet), solange
+     * dort bereits echte Daten drinstehen - sonst würden Redakteure den
+     * Zugriff auf bereits erfasste Inhalte verlieren, ohne dass die
+     * Daten selbst gelöscht würden (die Spalte bleibt ja erhalten,
+     * siehe die "nur deaktivieren, nie löschen"-Regel).
+     */
+    public function guardDeactivation(mixed $value, DataContainer $dc): mixed
+    {
+        if ('1' === (string) $value || !$dc->id) {
+            return $value;
+        }
+
+        $row = $this->connection->fetchAssociative(
+            'SELECT active, targetTable, fieldName, fieldType FROM tl_dynamic_field WHERE id = ?',
+            [(int) $dc->id],
+        );
+
+        if (false === $row || '1' !== (string) $row['active'] || '' === (string) $row['fieldName']) {
+            // War vorher schon inaktiv, oder hat noch gar keine echte
+            // Spalte (z.B. frisch dupliziert) - nichts zu schützen.
+            return $value;
+        }
+
+        if ($this->fieldHasData((string) $row['targetTable'], (string) $row['fieldName'], (string) $row['fieldType'])) {
+            throw new \RuntimeException(sprintf(
+                'Dieses Feld enthält bereits Daten in "%s" und kann deshalb nicht deaktiviert werden - Redakteure würden sonst den Zugriff darauf verlieren, obwohl die Daten noch da sind.',
+                $row['targetTable'],
+            ));
+        }
+
+        return $value;
+    }
+
+    private function fieldHasData(string $table, string $fieldName, string $fieldType): bool
+    {
+        if (!preg_match('/^[a-z0-9_]+$/', $table) || !preg_match('/^dynField[A-Za-z0-9]+$/', $fieldName)) {
+            // Sollte nach den Validierungen beim Anlegen nie vorkommen -
+            // im Zweifel konservativ blockieren statt ungeprüft zuzulassen.
+            return true;
+        }
+
+        $condition = match ($fieldType) {
+            DynamicFieldTypeRegistry::GALLERY => "`$fieldName` IS NOT NULL AND `$fieldName` NOT IN ('', 'a:0:{}')",
+            DynamicFieldTypeRegistry::CHECKBOX => "`$fieldName` IS NOT NULL AND `$fieldName` NOT IN ('', '0', 'a:0:{}')",
+            default => "`$fieldName` IS NOT NULL AND `$fieldName` != ''",
+        };
+
+        try {
+            $count = $this->connection->fetchOne("SELECT COUNT(*) FROM `{$table}` WHERE {$condition}");
+        } catch (DbalException) {
+            return true;
+        }
+
+        return (int) $count > 0;
+    }
+
+    /**
      * @param array<string, mixed> $row
      */
     private function resolveFieldName(array $row): string

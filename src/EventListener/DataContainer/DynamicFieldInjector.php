@@ -6,7 +6,6 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
-use Contao\FilesModel;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DbalException;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
@@ -84,27 +83,7 @@ class DynamicFieldInjector
                 'sql' => $this->typeRegistry->sqlFor((string) $row['fieldType']),
             ];
 
-            if (DynamicFieldTypeRegistry::GALLERY === (string) $row['fieldType']) {
-                $this->applyGalleryUploadFolder($dca['fields'][$fieldName], $row['galleryUploadFolder'] ?? null);
-            }
-
             $this->injectIntoPalette($table, $dca, $row, $fieldName);
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $field
-     */
-    private function applyGalleryUploadFolder(array &$field, mixed $folderUuid): void
-    {
-        if (!\is_string($folderUuid) || '' === $folderUuid) {
-            return;
-        }
-
-        $folder = FilesModel::findByUuid($folderUuid);
-
-        if (null !== $folder) {
-            $field['eval']['uploadFolder'] = $folder->path;
         }
     }
 
@@ -131,8 +110,12 @@ class DynamicFieldInjector
         // oder die gespeicherte Legend existiert in dieser Tabelle nicht
         // mehr) - neuen Abschnitt direkt ans Palette-Ende anhängen,
         // statt PaletteManipulator::addLegend() einen unsicheren
-        // Fallback-Anker raten zu lassen.
-        $legendKey = 'dyn_field_legend';
+        // Fallback-Anker raten zu lassen. Der Abschnitts-Key wird aus dem
+        // Titel abgeleitet, damit Felder mit UNTERSCHIEDLICHEM Titel auch
+        // in unterschiedlichen Abschnitten landen (sonst würden alle
+        // "neuer Abschnitt"-Felder einer Tabelle denselben einen Titel
+        // teilen - der zuletzt verarbeitete hätte gewonnen).
+        $legendKey = $this->legendKeyForTitle((string) $row['newLegendTitle']);
         $GLOBALS['TL_LANG'][$table][$legendKey] = '' !== (string) $row['newLegendTitle'] ? (string) $row['newLegendTitle'] : 'Weitere Felder';
 
         if (!str_contains($dca['palettes']['default'], '{'.$legendKey)) {
@@ -145,5 +128,12 @@ class DynamicFieldInjector
             ->addField([$fieldName], $legendKey, PaletteManipulator::POSITION_APPEND)
             ->applyToPalette('default', $table)
         ;
+    }
+
+    private function legendKeyForTitle(string $title): string
+    {
+        $slug = strtolower(trim((string) preg_replace('/[^a-zA-Z0-9]+/', '_', $title), '_'));
+
+        return '' !== $slug ? 'dyn_'.$slug.'_legend' : 'dyn_field_legend';
     }
 }

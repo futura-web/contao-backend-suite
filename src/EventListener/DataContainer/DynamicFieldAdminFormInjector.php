@@ -51,6 +51,10 @@ class DynamicFieldAdminFormInjector
             return $this->tableRegistry->getLegendOptions('' !== $targetTable ? $targetTable : null);
         };
 
+        $dca['fields']['active']['save_callback'][] = function (mixed $value, DataContainer $dc): mixed {
+            return $this->schemaSync->guardDeactivation($value, $dc);
+        };
+
         $dca['config']['onload_callback'][] = function (DataContainer|null $dc = null): void {
             $this->lockAfterCreation($dc);
         };
@@ -72,6 +76,14 @@ class DynamicFieldAdminFormInjector
      * DB-Spalte noch in der alten Tabelle mit dem alten Typ liegt, was
      * beim nächsten Speichern eines Datensatzes dort zu einem
      * SQL-Fehler ("Unknown column") führen würde.
+     *
+     * "Titel des neuen Abschnitts" aus demselben Grund gesperrt: Der
+     * Titel bestimmt direkt den Namen des Palette-Abschnitts (siehe
+     * DynamicFieldInjector::legendKeyForTitle()) - würde er nachträglich
+     * geändert, würde das Feld beim nächsten Laden der Zieltabelle in
+     * einen ANDEREN (neuen) Abschnitt wandern, statt im bestehenden zu
+     * bleiben, was für Redakteure, die sich an die bisherige Stelle
+     * gewöhnt haben, überraschend wäre.
      */
     private function lockAfterCreation(DataContainer|null $dc): void
     {
@@ -88,6 +100,7 @@ class DynamicFieldAdminFormInjector
         $dca = &$GLOBALS['TL_DCA']['tl_dynamic_field'];
         $dca['fields']['targetTable']['eval']['readonly'] = true;
         $dca['fields']['fieldType']['eval']['readonly'] = true;
+        $dca['fields']['newLegendTitle']['eval']['readonly'] = true;
     }
 
     /**
