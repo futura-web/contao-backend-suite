@@ -8,6 +8,7 @@ use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\FilesModel;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception as DbalException;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTypeRegistry;
 
@@ -34,10 +35,21 @@ class DynamicFieldInjector
             return;
         }
 
-        $rows = $this->connection->fetchAllAssociative(
-            "SELECT * FROM tl_dynamic_field WHERE targetTable = ? AND active = '1' AND fieldName != ''",
-            [$table],
-        );
+        try {
+            // tl_dynamic_field existiert erst nach der allerersten
+            // contao:migrate-Ausführung dieses Bundles - und genau dieser
+            // Lauf laedt dabei selbst wieder alle anderen Tabellen-DCAs
+            // (Schema-Diff), was diesen Hook erneut auslöst. Ohne dieses
+            // try/catch wuerde contao:migrate (und jeder andere
+            // Erstaufruf vor der Migration) an der fehlenden Tabelle
+            // scheitern.
+            $rows = $this->connection->fetchAllAssociative(
+                "SELECT * FROM tl_dynamic_field WHERE targetTable = ? AND active = '1' AND fieldName != ''",
+                [$table],
+            );
+        } catch (DbalException) {
+            return;
+        }
 
         if ([] === $rows) {
             return;
