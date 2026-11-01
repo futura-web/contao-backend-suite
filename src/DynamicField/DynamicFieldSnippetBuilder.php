@@ -53,6 +53,14 @@ class DynamicFieldSnippetBuilder
                 PHP;
         }
 
+        if (DynamicFieldTypeRegistry::LINK === $fieldType) {
+            return <<<PHP
+                <?php if (\$this->{$fieldName}): ?>
+                    <a href="<?= \$this->{$fieldName} ?>" class="btn">Mehr erfahren</a>
+                <?php endif; ?>
+                PHP;
+        }
+
         return <<<PHP
             <?php if (\$this->{$fieldName}): ?>
                 <?= \$this->{$fieldName} ?>

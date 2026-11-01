@@ -17,6 +17,7 @@ class DynamicFieldTypeRegistry
     public const SELECT = 'select';
     public const CHECKBOX = 'checkbox';
     public const GALLERY = 'gallery';
+    public const LINK = 'link';
 
     /** @var array<string, string> */
     public const LABELS = [
@@ -25,6 +26,7 @@ class DynamicFieldTypeRegistry
         self::SELECT => 'Auswahlliste (Select)',
         self::CHECKBOX => 'Checkbox (Ja/Nein)',
         self::GALLERY => 'Galerie (mehrere Bilder)',
+        self::LINK => 'Link/Button (URL)',
     ];
 
     public function sqlFor(string $type): string
@@ -75,6 +77,12 @@ class DynamicFieldTypeRegistry
                 'exclude' => true,
                 'inputType' => 'fileTree',
                 'eval' => ['fieldType' => 'checkbox', 'files' => true, 'multiple' => true, 'extensions' => 'jpg,jpeg,png,gif,webp', 'tl_class' => 'clr'],
+            ],
+            self::LINK => [
+                'label' => $label,
+                'exclude' => true,
+                'inputType' => 'text',
+                'eval' => ['rgxp' => 'url', 'tl_class' => 'w50', 'placeholder' => 'https://... oder /interne-seite'],
             ],
             default => [
                 'label' => $label,
