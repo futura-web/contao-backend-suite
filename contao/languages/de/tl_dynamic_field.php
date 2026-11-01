@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $GLOBALS['TL_LANG']['tl_dynamic_field']['active'] = ['Aktiv', 'Nur aktive Felder erscheinen in der Zieltabelle. Zum Entfernen eines Feldes hier deaktivieren statt löschen - die Daten bleiben erhalten.'];
-$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Zieltabelle', 'In welcher Tabelle (z.B. Termine, Nachrichten) das neue Feld erscheinen soll.'];
+$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Zieltabelle', 'In welchem Bereich (Termine, Nachrichten oder FAQ) das neue Feld erscheinen soll. Bewusst auf diese drei Content-Bereiche eingegrenzt.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['legend'] = ['Platzierung', 'In welchen bestehenden Abschnitt das Feld eingefügt wird, oder "Neuer eigener Abschnitt am Ende".'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'] = ['Titel des neuen Abschnitts', 'Nur relevant, wenn oben "Neuer eigener Abschnitt" gewählt wurde. Felder mit demselben Titel landen im selben Abschnitt. Nach dem ersten Speichern nicht mehr änderbar.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'] = ['Feldtyp', 'Welche Art von Eingabefeld angelegt wird.'];

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 $GLOBALS['TL_LANG']['tl_dynamic_field']['active'] = ['Active', 'Only active fields show up in the target table. To remove a field, deactivate it here instead of deleting it - the data stays intact.'];
-$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Target table', 'Which table (e.g. events, news) the new field should appear in.'];
+$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Target table', 'Which area (events, news or FAQ) the new field should appear in. Deliberately scoped to these three content areas.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['legend'] = ['Placement', 'Which existing section the field is added to, or "New section at the end".'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'] = ['New section title', 'Only relevant when "New section" was selected above. Fields sharing the same title land in the same section. Locked after the first save.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'] = ['Field type', 'Which kind of input field to create.'];
