@@ -51,6 +51,14 @@ class DynamicFieldSchemaSync
             return;
         }
 
+        if (DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE === $targetTable
+            && !isset(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES[(string) $row['contentElementType']])
+        ) {
+            Message::addError('Feld-Builder: Bitte einen Inhaltselement-Typ wählen, Feld wurde nicht angelegt.');
+
+            return;
+        }
+
         $fieldName = $this->resolveFieldName($row);
 
         if ($fieldName !== (string) $row['fieldName']) {

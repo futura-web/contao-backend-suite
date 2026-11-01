@@ -18,15 +18,21 @@ use Contao\DC_Table;
  * usw.) tauchen dadurch gar nicht erst in der Auswahl auf.
  *
  * Nutzerentscheidung (2026-11-01): bewusst eng gehalten statt "alles was
- * technisch geht" - Inhaltselemente (tl_content) sind ausdrücklich NICHT
- * dabei, weil sie pro Typ (Text, HTML, Bild, ...) eine eigene Palette
- * haben und der aktuelle Injektions-Mechanismus (ein Feld in EINE
- * "default"-Palette) sie nicht sinnvoll unterstützen kann - das wäre ein
- * eigener, größerer Folge-Schritt mit Typ-Auswahl.
+ * technisch geht" - technische Tabellen bleiben außen vor.
+ *
+ * Sonderfall "Inhaltselemente" (tl_content): haben pro Typ (Text, HTML,
+ * Bild, ...) eine EIGENE Palette statt einer gemeinsamen "default" -
+ * ein Feld landet deshalb nicht wie bei den anderen Tabellen in
+ * "default", sondern in der Palette des konkret gewählten Typs (siehe
+ * CONTENT_ELEMENT_TYPES + DynamicFieldInjector). Bewusst nur auf eine
+ * kuratierte Teilmenge der ~40 Contao-Inhaltselement-Typen beschränkt,
+ * nicht alle - auf Zuruf erweiterbar.
  */
 class DynamicFieldTableRegistry
 {
     public const NEW_LEGEND_OPTION = '__new__';
+
+    public const CONTENT_ELEMENT_TABLE = 'tl_content';
 
     private const OWN_TABLES = ['tl_dynamic_field'];
 
@@ -35,6 +41,13 @@ class DynamicFieldTableRegistry
         'tl_calendar_events' => 'Termine',
         'tl_news' => 'Nachrichten',
         'tl_faq' => 'FAQ',
+        self::CONTENT_ELEMENT_TABLE => 'Inhaltselemente',
+    ];
+
+    /** @var array<string, string> Inhaltselement-Typ (tl_content.type) => verständliches Label */
+    public const CONTENT_ELEMENT_TYPES = [
+        'text' => 'Text',
+        'image' => 'Bild',
     ];
 
     /** @var list<string>|null */
@@ -69,6 +82,16 @@ class DynamicFieldTableRegistry
         $options = [self::NEW_LEGEND_OPTION => 'Neuer eigener Abschnitt am Ende'];
 
         if (null === $table || '' === $table || !\in_array($table, $this->getTables(), true)) {
+            return $options;
+        }
+
+        // Inhaltselemente haben keine gemeinsame "default"-Palette, nur
+        // den Typ-Umschalter selbst ({type_legend},type) - ein darin
+        // "gefundener" Abschnitt wäre nicht die echte Palette des
+        // gewählten Typs und würde das Feld ins Leere hängen. Deshalb
+        // hier immer nur "neuer Abschnitt" anbieten, nie eine
+        // vermeintlich bestehende Sektion.
+        if (self::CONTENT_ELEMENT_TABLE === $table) {
             return $options;
         }
 

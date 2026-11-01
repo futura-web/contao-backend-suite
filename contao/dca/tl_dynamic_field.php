@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Contao\DataContainer;
 use Contao\DC_Table;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldSnippetBuilder;
+use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTypeRegistry;
 
 $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
@@ -39,15 +40,17 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
         ],
     ],
     'palettes' => [
-        '__selector__' => ['fieldType'],
+        '__selector__' => ['targetTable', 'fieldType'],
         'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,customFieldName;{snippet_legend},snippetPreview',
     ],
-    // "selectOptions" nur bei Select/Checkbox - Contaos Standard-
-    // Subpalette, gesteuert über den "fieldType"-Selector oben (siehe
-    // __selector__ + submitOnChange).
+    // "selectOptions" nur bei Select/Checkbox, "contentElementType" nur
+    // bei Zieltabelle "Inhaltselemente" - Contaos Standard-Subpalette,
+    // gesteuert über die Selector-Felder oben (siehe __selector__ +
+    // submitOnChange).
     'subpalettes' => [
         'select' => 'selectOptions',
         'checkbox' => 'selectOptions',
+        DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE => 'contentElementType',
     ],
     'fields' => [
         'id' => [
@@ -85,6 +88,15 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'text',
             'eval' => ['maxlength' => 128, 'tl_class' => 'clr w50', 'placeholder' => 'nur nötig bei "Neuer eigener Abschnitt"'],
             'sql' => "varchar(128) NOT NULL default ''",
+        ],
+        'contentElementType' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'],
+            'exclude' => true,
+            'inputType' => 'select',
+            'options' => array_keys(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES),
+            'reference' => DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES,
+            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'clr w50', 'chosen' => true],
+            'sql' => "varchar(32) NOT NULL default ''",
         ],
         'fieldType' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'],

@@ -79,28 +79,58 @@ class DynamicFieldInjector
                 continue;
             }
 
+            $paletteKey = $this->paletteKeyFor($table, $row);
+
+            if (null === $paletteKey || !\is_string($dca['palettes'][$paletteKey] ?? null)) {
+                // Inhaltselemente ohne (mehr) gültigen Typ, oder eine
+                // Typ-Palette, die es in dieser Contao-Version gar nicht
+                // (mehr) gibt - konservativ überspringen statt in eine
+                // nicht existierende Palette zu schreiben.
+                continue;
+            }
+
             $dca['fields'][$fieldName] = $this->typeRegistry->buildDcaField($row) + [
                 'sql' => $this->typeRegistry->sqlFor((string) $row['fieldType']),
             ];
 
-            $this->injectIntoPalette($table, $dca, $row, $fieldName);
+            $this->injectIntoPalette($table, $paletteKey, $dca, $row, $fieldName);
         }
+    }
+
+    /**
+     * Normalfall: die "default"-Palette der Zieltabelle. Inhaltselemente
+     * haben stattdessen pro Typ eine eigene Palette (siehe
+     * DynamicFieldTableRegistry-Klassenkommentar) - dort wird die
+     * Palette des konkret gewählten Typs (tl_content.type-Wert)
+     * verwendet.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function paletteKeyFor(string $table, array $row): string|null
+    {
+        if (DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE !== $table) {
+            return 'default';
+        }
+
+        $type = (string) ($row['contentElementType'] ?? '');
+
+        return isset(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES[$type]) ? $type : null;
     }
 
     /**
      * @param array<string, mixed> $dca
      * @param array<string, mixed> $row
      */
-    private function injectIntoPalette(string $table, array &$dca, array $row, string $fieldName): void
+    private function injectIntoPalette(string $table, string $paletteKey, array &$dca, array $row, string $fieldName): void
     {
         $legend = (string) $row['legend'];
-        $palette = $dca['palettes']['default'] ?? '';
+        $palette = $dca['palettes'][$paletteKey] ?? '';
         $palette = \is_string($palette) ? $palette : '';
 
         if ('' !== $legend && DynamicFieldTableRegistry::NEW_LEGEND_OPTION !== $legend && str_contains($palette, '{'.$legend)) {
             PaletteManipulator::create()
                 ->addField([$fieldName], $legend, PaletteManipulator::POSITION_APPEND)
-                ->applyToPalette('default', $table)
+                ->applyToPalette($paletteKey, $table)
             ;
 
             return;
@@ -118,15 +148,15 @@ class DynamicFieldInjector
         $legendKey = $this->legendKeyForTitle((string) $row['newLegendTitle']);
         $GLOBALS['TL_LANG'][$table][$legendKey] = '' !== (string) $row['newLegendTitle'] ? (string) $row['newLegendTitle'] : 'Weitere Felder';
 
-        if (!str_contains($dca['palettes']['default'], '{'.$legendKey)) {
-            $dca['palettes']['default'] = rtrim($dca['palettes']['default'], ';').';{'.$legendKey.'},'.$fieldName;
+        if (!str_contains($palette, '{'.$legendKey)) {
+            $dca['palettes'][$paletteKey] = rtrim($palette, ';').';{'.$legendKey.'},'.$fieldName;
 
             return;
         }
 
         PaletteManipulator::create()
             ->addField([$fieldName], $legendKey, PaletteManipulator::POSITION_APPEND)
-            ->applyToPalette('default', $table)
+            ->applyToPalette($paletteKey, $table)
         ;
     }
 

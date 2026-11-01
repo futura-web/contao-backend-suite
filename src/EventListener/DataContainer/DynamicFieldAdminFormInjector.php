@@ -101,6 +101,11 @@ class DynamicFieldAdminFormInjector
         $dca['fields']['targetTable']['eval']['readonly'] = true;
         $dca['fields']['fieldType']['eval']['readonly'] = true;
         $dca['fields']['newLegendTitle']['eval']['readonly'] = true;
+        // Gleicher Grund wie bei targetTable: bestimmt, in welche Palette
+        // (welcher Inhaltselement-Typ) injiziert wird - nachträglich
+        // geändert würde das Feld aus der Form des bisherigen Typs
+        // verschwinden, ohne dass jemand das erwartet.
+        $dca['fields']['contentElementType']['eval']['readonly'] = true;
         // "customFieldName" bestimmt den technischen Namen nur beim
         // ALLERERSTEN Speichern (siehe DynamicFieldSchemaSync::
         // resolveFieldName(), bricht bei bereits gesetztem "fieldName"
