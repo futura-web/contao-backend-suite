@@ -1,0 +1,134 @@
+<?php
+
+declare(strict_types=1);
+
+use Contao\DataContainer;
+use Contao\DC_Table;
+use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldSnippetBuilder;
+use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTypeRegistry;
+
+$GLOBALS['TL_DCA']['tl_dynamic_field'] = [
+    'config' => [
+        'dataContainer' => DC_Table::class,
+        'enableVersioning' => true,
+        'sql' => [
+            'keys' => [
+                'id' => 'primary',
+            ],
+        ],
+    ],
+    'list' => [
+        'sorting' => [
+            'mode' => DataContainer::MODE_SORTED,
+            'fields' => ['targetTable', 'fieldLabel'],
+            'flag' => DataContainer::SORT_ASC,
+            'panelLayout' => 'filter;search,limit',
+        ],
+        'label' => [
+            'fields' => ['fieldLabel', 'targetTable', 'fieldType'],
+            'format' => '%s <span class="tl_gray">[%s / %s]</span>',
+        ],
+        // Bewusst kein "delete" - angelegte Felder werden nur über die
+        // "Aktiv"-Checkbox deaktiviert, nie samt DB-Spalte gelöscht (
+        // Nutzerentscheidung, siehe Memory feedback-no-hardcoded-env-values
+        // /project-contao-backend-suite).
+        'operations' => [
+            'edit',
+            'copy',
+            'show',
+        ],
+    ],
+    'palettes' => [
+        'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,selectOptions,galleryUploadFolder;{snippet_legend},snippetPreview',
+    ],
+    'fields' => [
+        'id' => [
+            'sql' => 'int(10) unsigned NOT NULL auto_increment',
+        ],
+        'tstamp' => [
+            'sql' => 'int(10) unsigned NOT NULL default 0',
+        ],
+        'active' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['active'],
+            'exclude' => true,
+            'inputType' => 'checkbox',
+            'eval' => ['tl_class' => 'clr'],
+            'sql' => "char(1) NOT NULL default '1'",
+        ],
+        'targetTable' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'],
+            'exclude' => true,
+            'inputType' => 'select',
+            // options_callback wird von DynamicFieldAdminFormInjector gesetzt.
+            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'sql' => "varchar(64) NOT NULL default ''",
+        ],
+        'legend' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['legend'],
+            'exclude' => true,
+            'inputType' => 'select',
+            // options_callback wird von DynamicFieldAdminFormInjector gesetzt.
+            'eval' => ['mandatory' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'sql' => "varchar(64) NOT NULL default ''",
+        ],
+        'newLegendTitle' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'],
+            'exclude' => true,
+            'inputType' => 'text',
+            'eval' => ['maxlength' => 128, 'tl_class' => 'clr w50', 'placeholder' => 'nur nötig bei "Neuer eigener Abschnitt"'],
+            'sql' => "varchar(128) NOT NULL default ''",
+        ],
+        'fieldType' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'],
+            'exclude' => true,
+            'inputType' => 'select',
+            'options' => array_keys(DynamicFieldTypeRegistry::LABELS),
+            'reference' => DynamicFieldTypeRegistry::LABELS,
+            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'sql' => "varchar(32) NOT NULL default ''",
+        ],
+        'fieldLabel' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldLabel'],
+            'exclude' => true,
+            'search' => true,
+            'inputType' => 'text',
+            'eval' => ['mandatory' => true, 'maxlength' => 128, 'tl_class' => 'w50'],
+            'sql' => "varchar(128) NOT NULL default ''",
+        ],
+        'fieldDescription' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldDescription'],
+            'exclude' => true,
+            'inputType' => 'text',
+            'eval' => ['maxlength' => 255, 'tl_class' => 'clr w50'],
+            'sql' => "varchar(255) NOT NULL default ''",
+        ],
+        'selectOptions' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['selectOptions'],
+            'exclude' => true,
+            'inputType' => 'textarea',
+            'eval' => ['tl_class' => 'clr', 'rows' => 4, 'placeholder' => "wert1:Label 1\nwert2:Label 2", 'decodeEntities' => true],
+            'sql' => 'text NULL',
+        ],
+        'galleryUploadFolder' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['galleryUploadFolder'],
+            'exclude' => true,
+            'inputType' => 'fileTree',
+            'eval' => ['fieldType' => 'radio', 'files' => false, 'tl_class' => 'clr'],
+            'sql' => "binary(16) NULL",
+        ],
+        'fieldName' => [
+            // Technischer Spaltenname, automatisch aus "fieldLabel"
+            // abgeleitet (siehe DynamicFieldSchemaSync::resolveFieldName) -
+            // kein eigenes Eingabefeld, nicht in der Palette.
+            'sql' => "varchar(64) NOT NULL default ''",
+        ],
+        'snippetPreview' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['snippetPreview'],
+            'exclude' => true,
+            'input_field_callback' => static function (DataContainer $dc): string {
+                return (new DynamicFieldSnippetBuilder())->render($dc);
+            },
+            'eval' => ['tl_class' => 'clr long'],
+        ],
+    ],
+];

@@ -10,4 +10,7 @@ ArrayUtil::arrayInsert($GLOBALS['BE_MOD']['design'], \count($GLOBALS['BE_MOD']['
     'style_selector' => [
         'tables' => ['tl_style_selector'],
     ],
+    'dynamic_field' => [
+        'tables' => ['tl_dynamic_field'],
+    ],
 ]);
