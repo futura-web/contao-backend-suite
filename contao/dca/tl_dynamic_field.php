@@ -82,7 +82,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'exclude' => true,
             'inputType' => 'select',
             // options_callback wird von DynamicFieldAdminFormInjector gesetzt.
-            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'w33', 'chosen' => true],
             'sql' => "varchar(64) NOT NULL default ''",
         ],
         'legend' => [
@@ -90,14 +90,14 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'exclude' => true,
             'inputType' => 'select',
             // options_callback wird von DynamicFieldAdminFormInjector gesetzt.
-            'eval' => ['mandatory' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'tl_class' => 'w33', 'chosen' => true],
             'sql' => "varchar(64) NOT NULL default ''",
         ],
         'newLegendTitle' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 128, 'tl_class' => 'clr w50', 'placeholder' => 'nur nötig bei "Neuer eigener Abschnitt"'],
+            'eval' => ['maxlength' => 128, 'tl_class' => 'w33', 'placeholder' => 'nur nötig bei "Neuer eigener Abschnitt"'],
             'sql' => "varchar(128) NOT NULL default ''",
         ],
         'contentElementType' => [
@@ -106,7 +106,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'select',
             'options' => array_keys(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES),
             'reference' => DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES,
-            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'clr w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w33', 'chosen' => true],
             'sql' => "varchar(32) NOT NULL default ''",
         ],
         'fieldType' => [
@@ -115,7 +115,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'select',
             'options' => array_keys(DynamicFieldTypeRegistry::LABELS),
             'reference' => DynamicFieldTypeRegistry::LABELS,
-            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'clr w33', 'chosen' => true],
             'sql' => "varchar(32) NOT NULL default ''",
         ],
         'fieldLabel' => [
@@ -123,21 +123,21 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'exclude' => true,
             'search' => true,
             'inputType' => 'text',
-            'eval' => ['mandatory' => true, 'maxlength' => 128, 'tl_class' => 'clr w50'],
+            'eval' => ['mandatory' => true, 'maxlength' => 128, 'tl_class' => 'w33'],
             'sql' => "varchar(128) NOT NULL default ''",
         ],
         'fieldDescription' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldDescription'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 255, 'tl_class' => 'w50'],
+            'eval' => ['maxlength' => 255, 'tl_class' => 'w33'],
             'sql' => "varchar(255) NOT NULL default ''",
         ],
         'customFieldName' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['customFieldName'],
             'exclude' => true,
             'inputType' => 'text',
-            'eval' => ['maxlength' => 48, 'tl_class' => 'clr w50', 'placeholder' => 'z.B. hinweistext'],
+            'eval' => ['maxlength' => 48, 'tl_class' => 'w33', 'placeholder' => 'z.B. hinweistext'],
             'sql' => "varchar(48) NOT NULL default ''",
         ],
         'optionsSource' => [
@@ -146,7 +146,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'select',
             'options' => array_keys(DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS),
             'reference' => DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS,
-            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w50', 'chosen' => true],
+            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w33', 'chosen' => true],
             'sql' => "varchar(32) NOT NULL default ''",
         ],
         'selectOptions' => [
