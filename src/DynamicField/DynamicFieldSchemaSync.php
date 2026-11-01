@@ -103,6 +103,17 @@ class DynamicFieldSchemaSync
             return true;
         }
 
+        if (!$this->columnExists($table, $fieldName)) {
+            // Keine Spalte, keine Daten - nichts zu schützen. Kann
+            // vorkommen, wenn die Spalte außerhalb des Bundles verloren
+            // ging (z.B. durch ein volles "contao:migrate --with-deletes").
+            // Die zuvor hier stehende Variante behandelte genau diesen
+            // Fall faelschlich als "nicht pruefbar -> blockieren", was
+            // ein Deaktivieren unmoeglich machte, obwohl nichts verloren
+            // gehen konnte.
+            return false;
+        }
+
         $condition = match ($fieldType) {
             DynamicFieldTypeRegistry::GALLERY => "`$fieldName` IS NOT NULL AND `$fieldName` NOT IN ('', 'a:0:{}')",
             DynamicFieldTypeRegistry::CHECKBOX => "`$fieldName` IS NOT NULL AND `$fieldName` NOT IN ('', '0', 'a:0:{}')",
