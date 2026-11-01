@@ -55,12 +55,28 @@ class DynamicFieldInjector
             return;
         }
 
+        // Nie ein Feld einhängen, dessen Spalte tatsächlich (noch) nicht
+        // existiert - z.B. weil das automatische ALTER TABLE beim
+        // Anlegen fehlgeschlagen ist (siehe DynamicFieldSchemaSync). Ein
+        // DCA-Feld ohne echte Spalte würde beim nächsten Speichern EINES
+        // BELIEBIGEN Datensatzes dieser Tabelle mit "Unknown column"
+        // abstürzen - live gegen das echte Schema prüfen ist hier
+        // wichtiger als die eine zusätzliche Abfrage zu sparen.
+        try {
+            $existingColumns = array_map(
+                static fn ($column): string => strtolower($column->getName()),
+                $this->connection->createSchemaManager()->listTableColumns($table),
+            );
+        } catch (DbalException) {
+            return;
+        }
+
         $dca = &$GLOBALS['TL_DCA'][$table];
 
         foreach ($rows as $row) {
             $fieldName = (string) $row['fieldName'];
 
-            if (isset($dca['fields'][$fieldName])) {
+            if (isset($dca['fields'][$fieldName]) || !\in_array(strtolower($fieldName), $existingColumns, true)) {
                 continue;
             }
 
