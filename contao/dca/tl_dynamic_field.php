@@ -40,7 +40,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
     ],
     'palettes' => [
         '__selector__' => ['fieldType'],
-        'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription;{snippet_legend},snippetPreview',
+        'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,customFieldName;{snippet_legend},snippetPreview',
     ],
     // "selectOptions" nur bei Select/Checkbox - Contaos Standard-
     // Subpalette, gesteuert über den "fieldType"-Selector oben (siehe
@@ -109,6 +109,13 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'text',
             'eval' => ['maxlength' => 255, 'tl_class' => 'clr w50'],
             'sql' => "varchar(255) NOT NULL default ''",
+        ],
+        'customFieldName' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['customFieldName'],
+            'exclude' => true,
+            'inputType' => 'text',
+            'eval' => ['maxlength' => 48, 'tl_class' => 'clr w50', 'placeholder' => 'z.B. hinweistext'],
+            'sql' => "varchar(48) NOT NULL default ''",
         ],
         'selectOptions' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['selectOptions'],

@@ -140,7 +140,8 @@ class DynamicFieldSchemaSync
             return $existing;
         }
 
-        $base = self::NAME_PREFIX.$this->studlify((string) $row['fieldLabel']);
+        $custom = (string) ($row['customFieldName'] ?? '');
+        $base = self::NAME_PREFIX.$this->studlify('' !== $custom ? $custom : (string) $row['fieldLabel']);
         $name = $base;
         $suffix = 1;
 

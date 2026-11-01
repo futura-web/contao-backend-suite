@@ -9,6 +9,7 @@ $GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'] = ['New section title'
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'] = ['Field type', 'Which kind of input field to create.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldLabel'] = ['Name', 'Visible label in the form. Also used to derive the technical field name.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldDescription'] = ['Help text', 'Optional explanatory text shown below the field.'];
+$GLOBALS['TL_LANG']['tl_dynamic_field']['customFieldName'] = ['Custom name (optional)', 'Sets the variable name used in the snippet (e.g. "hint" becomes $this->dynFieldHint). Leave empty to derive it automatically from "Name" - useful e.g. when "Name" is mostly special characters or you want a shorter/different variable name. Locked after the first save.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['selectOptions'] = ['Choices', 'The list of entries editors can pick from on this field (with "Checkbox", several at once). One entry per line, format "stored-value:Visible label" - e.g. "red:Red" or "internal:Internal only". Without ":" the same text is used for both (e.g. "Red" becomes both value and label "Red"). This list is what shows up in the dropdown or checkbox list.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['snippetPreview'] = ['Template snippet', 'For manual insertion into the target table\'s template - not inserted automatically.'];
 

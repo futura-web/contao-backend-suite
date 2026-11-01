@@ -101,6 +101,13 @@ class DynamicFieldAdminFormInjector
         $dca['fields']['targetTable']['eval']['readonly'] = true;
         $dca['fields']['fieldType']['eval']['readonly'] = true;
         $dca['fields']['newLegendTitle']['eval']['readonly'] = true;
+        // "customFieldName" bestimmt den technischen Namen nur beim
+        // ALLERERSTEN Speichern (siehe DynamicFieldSchemaSync::
+        // resolveFieldName(), bricht bei bereits gesetztem "fieldName"
+        // sofort ab) - eine spätere Änderung hätte also ohnehin keinen
+        // Effekt mehr auf den echten Spaltennamen. Gesperrt, damit das
+        // nicht den Eindruck erweckt, man könnte die Spalte so umbenennen.
+        $dca['fields']['customFieldName']['eval']['readonly'] = true;
     }
 
     /**
