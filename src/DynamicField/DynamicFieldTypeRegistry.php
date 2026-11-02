@@ -19,6 +19,15 @@ class DynamicFieldTypeRegistry
     public const GALLERY = 'gallery';
     public const LINK = 'link';
 
+    // Der Feldtyp "Link" erzeugt KEINE einzelne Spalte, sondern vier
+    // zusammengehörige Spalten (fieldName + jeweiliger Suffix) - siehe
+    // columnSqlTypes()/buildDcaFields(). Alle anderen Feldtypen liefern
+    // dort weiterhin genau einen Eintrag mit Suffix "".
+    public const LINK_SUFFIX_URL = '';
+    public const LINK_SUFFIX_TITLE = 'Title';
+    public const LINK_SUFFIX_TEXT = 'Text';
+    public const LINK_SUFFIX_TARGET = 'Target';
+
     /** @var array<string, string> */
     public const LABELS = [
         self::TEXT => 'Text (einzeilig)',
@@ -26,7 +35,7 @@ class DynamicFieldTypeRegistry
         self::SELECT => 'Auswahlliste (Select)',
         self::CHECKBOX => 'Checkbox (Ja/Nein)',
         self::GALLERY => 'Galerie (mehrere Bilder)',
-        self::LINK => 'Link/Button (URL)',
+        self::LINK => 'Link/Button (URL + Titel + Text + neuer Tab)',
     ];
 
     // Nur für Feldtyp "Select" relevant: woher die Optionen kommen.
@@ -57,11 +66,69 @@ class DynamicFieldTypeRegistry
     }
 
     /**
+     * Welche Spalte(n) ein Feldtyp tatsächlich in der Zieltabelle
+     * braucht. Bei allen einfachen Typen genau eine, mit Suffix "" (die
+     * Spalte heißt dann exakt wie "fieldName"). "Link" ist der einzige
+     * zusammengesetzte Typ und braucht vier (URL/Titel/Text/Blank-
+     * Checkbox) - DynamicFieldSchemaSync::ensureColumn() legt für jeden
+     * zurückgelieferten Suffix "fieldName.$suffix" als eigene Spalte an.
+     *
+     * @return array<string, string> Suffix => SQL-Spaltendefinition
+     */
+    public function columnSqlTypes(string $type): array
+    {
+        if (self::LINK === $type) {
+            return [
+                self::LINK_SUFFIX_URL => "varchar(255) NOT NULL default ''",
+                self::LINK_SUFFIX_TITLE => "varchar(255) NOT NULL default ''",
+                self::LINK_SUFFIX_TEXT => "varchar(255) NOT NULL default ''",
+                self::LINK_SUFFIX_TARGET => "char(1) NOT NULL default ''",
+            ];
+        }
+
+        return ['' => $this->sqlFor($type)];
+    }
+
+    /**
+     * Ob die Spalte für diesen Suffix eine Checkbox (char(1), "0"/"1")
+     * ist - relevant für DynamicFieldSchemaSync::fieldHasData(), die bei
+     * Checkbox-Spalten auch den Wert "0" als "keine Daten" werten muss.
+     */
+    public function columnIsCheckbox(string $type, string $suffix): bool
+    {
+        if (self::CHECKBOX === $type && '' === $suffix) {
+            return true;
+        }
+
+        return self::LINK === $type && self::LINK_SUFFIX_TARGET === $suffix;
+    }
+
+    /**
+     * Baut die DCA-Felddefinition(en) für einen Feld-Builder-Eintrag.
+     * Bei einfachen Typen genau ein Eintrag (Suffix ""), bei "Link" vier
+     * zusammengehörige Teilfelder (siehe columnSqlTypes()) - alle vier
+     * werden von DynamicFieldInjector gemeinsam, direkt hintereinander,
+     * in die Palette der Zieltabelle eingehängt.
+     *
      * @param array<string, mixed> $row Zeile aus tl_dynamic_field
+     *
+     * @return array<string, array<string, mixed>> Suffix => DCA-Felddefinition
+     */
+    public function buildDcaFields(array $row): array
+    {
+        if (self::LINK === (string) $row['fieldType']) {
+            return $this->buildLinkDcaFields($row);
+        }
+
+        return ['' => $this->buildSimpleDcaField($row)];
+    }
+
+    /**
+     * @param array<string, mixed> $row
      *
      * @return array<string, mixed>
      */
-    public function buildDcaField(array $row): array
+    private function buildSimpleDcaField(array $row): array
     {
         $label = [
             (string) $row['fieldLabel'],
@@ -98,12 +165,6 @@ class DynamicFieldTypeRegistry
                 'inputType' => 'fileTree',
                 'eval' => ['fieldType' => 'checkbox', 'files' => true, 'multiple' => true, 'extensions' => 'jpg,jpeg,png,gif,webp', 'tl_class' => 'clr'],
             ],
-            self::LINK => [
-                'label' => $label,
-                'exclude' => true,
-                'inputType' => 'text',
-                'eval' => ['rgxp' => 'url', 'tl_class' => 'w50', 'placeholder' => 'https://... oder /interne-seite'],
-            ],
             default => [
                 'label' => $label,
                 'exclude' => true,
@@ -111,6 +172,46 @@ class DynamicFieldTypeRegistry
                 'eval' => ['tl_class' => 'w50', 'maxlength' => 255],
             ],
         };
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, array<string, mixed>> Suffix => DCA-Felddefinition
+     */
+    private function buildLinkDcaFields(array $row): array
+    {
+        $baseLabel = (string) $row['fieldLabel'];
+        $description = '' !== (string) $row['fieldDescription']
+            ? (string) $row['fieldDescription']
+            : 'Über den Feld-Builder angelegtes Link-Feld.';
+
+        return [
+            self::LINK_SUFFIX_URL => [
+                'label' => [$baseLabel.' - Link', $description],
+                'exclude' => true,
+                'inputType' => 'text',
+                'eval' => ['rgxp' => 'url', 'tl_class' => 'w50', 'placeholder' => 'https://... oder /interne-seite'],
+            ],
+            self::LINK_SUFFIX_TITLE => [
+                'label' => [$baseLabel.' - Titel', 'Optionaler Title-/Tooltip-Text des Links.'],
+                'exclude' => true,
+                'inputType' => 'text',
+                'eval' => ['tl_class' => 'w50', 'maxlength' => 255],
+            ],
+            self::LINK_SUFFIX_TEXT => [
+                'label' => [$baseLabel.' - Text', 'Sichtbarer Linktext bzw. Button-Beschriftung.'],
+                'exclude' => true,
+                'inputType' => 'text',
+                'eval' => ['tl_class' => 'w50', 'maxlength' => 255],
+            ],
+            self::LINK_SUFFIX_TARGET => [
+                'label' => [$baseLabel.' - Neuer Tab', 'Link in neuem Tab öffnen (target="_blank").'],
+                'exclude' => true,
+                'inputType' => 'checkbox',
+                'eval' => ['tl_class' => 'w50 m12'],
+            ],
+        ];
     }
 
     /**

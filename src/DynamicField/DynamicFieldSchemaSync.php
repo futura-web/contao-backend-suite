@@ -150,25 +150,38 @@ class DynamicFieldSchemaSync
             return true;
         }
 
-        if (!$this->columnExists($table, $fieldName)) {
-            // Keine Spalte, keine Daten - nichts zu schützen. Kann
-            // vorkommen, wenn die Spalte außerhalb des Bundles verloren
-            // ging (z.B. durch ein volles "contao:migrate --with-deletes").
-            // Die zuvor hier stehende Variante behandelte genau diesen
-            // Fall faelschlich als "nicht pruefbar -> blockieren", was
-            // ein Deaktivieren unmoeglich machte, obwohl nichts verloren
-            // gehen konnte.
+        // Bei zusammengesetzten Typen (aktuell nur "Link") zählt JEDE der
+        // zugehörigen Spalten (URL/Titel/Text/Blank-Checkbox) - sobald
+        // auch nur eine davon befüllt ist, gilt das Feld als "hat Daten".
+        $conditions = [];
+
+        foreach (array_keys($this->typeRegistry->columnSqlTypes($fieldType)) as $suffix) {
+            $columnName = $fieldName.$suffix;
+
+            if (!$this->columnExists($table, $columnName)) {
+                // Keine Spalte, keine Daten - nichts zu schützen. Kann
+                // vorkommen, wenn die Spalte außerhalb des Bundles
+                // verloren ging (z.B. durch ein volles "contao:migrate
+                // --with-deletes"). Die zuvor hier stehende Variante
+                // behandelte genau diesen Fall faelschlich als "nicht
+                // pruefbar -> blockieren", was ein Deaktivieren
+                // unmoeglich machte, obwohl nichts verloren gehen konnte.
+                continue;
+            }
+
+            $conditions[] = match (true) {
+                DynamicFieldTypeRegistry::GALLERY === $fieldType => "(`$columnName` IS NOT NULL AND `$columnName` NOT IN ('', 'a:0:{}'))",
+                $this->typeRegistry->columnIsCheckbox($fieldType, $suffix) => "(`$columnName` IS NOT NULL AND `$columnName` NOT IN ('', '0', 'a:0:{}'))",
+                default => "(`$columnName` IS NOT NULL AND `$columnName` != '')",
+            };
+        }
+
+        if ([] === $conditions) {
             return false;
         }
 
-        $condition = match ($fieldType) {
-            DynamicFieldTypeRegistry::GALLERY => "`$fieldName` IS NOT NULL AND `$fieldName` NOT IN ('', 'a:0:{}')",
-            DynamicFieldTypeRegistry::CHECKBOX => "`$fieldName` IS NOT NULL AND `$fieldName` NOT IN ('', '0', 'a:0:{}')",
-            default => "`$fieldName` IS NOT NULL AND `$fieldName` != ''",
-        };
-
         try {
-            $count = $this->connection->fetchOne("SELECT COUNT(*) FROM `{$table}` WHERE {$condition}");
+            $count = $this->connection->fetchOne(sprintf('SELECT COUNT(*) FROM `%s` WHERE %s', $table, implode(' OR ', $conditions)));
         } catch (DbalException) {
             return true;
         }
@@ -238,29 +251,35 @@ class DynamicFieldSchemaSync
             return;
         }
 
-        try {
-            if ($this->columnExists($table, $fieldName)) {
-                return;
+        // Bei zusammengesetzten Typen (aktuell nur "Link") mehrere
+        // Spalten anlegen (fieldName + jeweiliger Suffix) - bei allen
+        // anderen Typen liefert columnSqlTypes() genau einen Eintrag mit
+        // Suffix "", also unverändertes Verhalten.
+        foreach ($this->typeRegistry->columnSqlTypes((string) $row['fieldType']) as $suffix => $sqlType) {
+            $columnName = $fieldName.$suffix;
+
+            try {
+                if ($this->columnExists($table, $columnName)) {
+                    continue;
+                }
+
+                $this->connection->executeStatement(sprintf(
+                    'ALTER TABLE `%s` ADD COLUMN `%s` %s',
+                    $table,
+                    $columnName,
+                    $sqlType,
+                ));
+
+                Message::addConfirmation(sprintf('Feld-Builder: Spalte "%s" wurde in "%s" angelegt.', $columnName, $table));
+            } catch (DbalException $exception) {
+                Message::addInfo(sprintf(
+                    'Feld-Builder: Spalte "%s" konnte nicht automatisch in "%s" angelegt werden (%s). Bitte manuell aktualisieren: %s',
+                    $columnName,
+                    $table,
+                    $exception->getMessage(),
+                    $this->sshMigrateHint,
+                ));
             }
-
-            $sqlType = $this->typeRegistry->sqlFor((string) $row['fieldType']);
-
-            $this->connection->executeStatement(sprintf(
-                'ALTER TABLE `%s` ADD COLUMN `%s` %s',
-                $table,
-                $fieldName,
-                $sqlType,
-            ));
-
-            Message::addConfirmation(sprintf('Feld-Builder: Spalte "%s" wurde in "%s" angelegt.', $fieldName, $table));
-        } catch (DbalException $exception) {
-            Message::addInfo(sprintf(
-                'Feld-Builder: Spalte "%s" konnte nicht automatisch in "%s" angelegt werden (%s). Bitte manuell aktualisieren: %s',
-                $fieldName,
-                $table,
-                $exception->getMessage(),
-                $this->sshMigrateHint,
-            ));
         }
     }
 

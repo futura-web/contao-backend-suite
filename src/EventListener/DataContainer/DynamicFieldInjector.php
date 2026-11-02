@@ -74,8 +74,32 @@ class DynamicFieldInjector
 
         foreach ($rows as $row) {
             $fieldName = (string) $row['fieldName'];
+            $fieldType = (string) $row['fieldType'];
 
-            if (isset($dca['fields'][$fieldName]) || !\in_array(strtolower($fieldName), $existingColumns, true)) {
+            if (isset($dca['fields'][$fieldName])) {
+                continue;
+            }
+
+            $columnSqlTypes = $this->typeRegistry->columnSqlTypes($fieldType);
+
+            // Nie injizieren, solange nicht WIRKLICH ALLE zugehörigen
+            // Spalten existieren - bei "Link" z.B. alle vier (URL/Titel/
+            // Text/Blank-Checkbox). Bei einem nur teilweise fehlge-
+            // schlagenen ALTER TABLE (siehe DynamicFieldSchemaSync)
+            // würde sonst eines der Teilfelder ohne echte Spalte
+            // eingehängt und beim nächsten Speichern mit "Unknown
+            // column" abstürzen.
+            $allColumnsExist = true;
+
+            foreach (array_keys($columnSqlTypes) as $suffix) {
+                if (!\in_array(strtolower($fieldName.$suffix), $existingColumns, true)) {
+                    $allColumnsExist = false;
+
+                    break;
+                }
+            }
+
+            if (!$allColumnsExist) {
                 continue;
             }
 
@@ -89,15 +113,20 @@ class DynamicFieldInjector
                 continue;
             }
 
-            $dca['fields'][$fieldName] = $this->typeRegistry->buildDcaField($row) + [
-                'sql' => $this->typeRegistry->sqlFor((string) $row['fieldType']),
-            ];
+            $columnNames = [];
 
-            if (DynamicFieldTypeRegistry::SELECT === (string) $row['fieldType']) {
-                $this->applyReferenceOptions($dca['fields'][$fieldName], (string) $row['optionsSource']);
+            foreach ($this->typeRegistry->buildDcaFields($row) as $suffix => $fieldDef) {
+                $columnName = $fieldName.$suffix;
+                $columnNames[] = $columnName;
+
+                $dca['fields'][$columnName] = $fieldDef + ['sql' => $columnSqlTypes[$suffix]];
+
+                if ('' === $suffix && DynamicFieldTypeRegistry::SELECT === $fieldType) {
+                    $this->applyReferenceOptions($dca['fields'][$columnName], (string) $row['optionsSource']);
+                }
             }
 
-            $this->injectIntoPalette($table, $paletteKey, $dca, $row, $fieldName);
+            $this->injectIntoPalette($table, $paletteKey, $dca, $row, $columnNames);
         }
     }
 
@@ -213,8 +242,9 @@ class DynamicFieldInjector
     /**
      * @param array<string, mixed> $dca
      * @param array<string, mixed> $row
+     * @param list<string>         $columnNames Alle Spalten dieses Feld-Builder-Eintrags (bei "Link" vier, sonst eine), werden zusammenhängend eingehängt
      */
-    private function injectIntoPalette(string $table, string $paletteKey, array &$dca, array $row, string $fieldName): void
+    private function injectIntoPalette(string $table, string $paletteKey, array &$dca, array $row, array $columnNames): void
     {
         $legend = (string) $row['legend'];
         $palette = $dca['palettes'][$paletteKey] ?? '';
@@ -222,7 +252,7 @@ class DynamicFieldInjector
 
         if ('' !== $legend && DynamicFieldTableRegistry::NEW_LEGEND_OPTION !== $legend && str_contains($palette, '{'.$legend)) {
             PaletteManipulator::create()
-                ->addField([$fieldName], $legend, PaletteManipulator::POSITION_APPEND)
+                ->addField($columnNames, $legend, PaletteManipulator::POSITION_APPEND)
                 ->applyToPalette($paletteKey, $table)
             ;
 
@@ -242,13 +272,13 @@ class DynamicFieldInjector
         $GLOBALS['TL_LANG'][$table][$legendKey] = '' !== (string) $row['newLegendTitle'] ? (string) $row['newLegendTitle'] : 'Weitere Felder';
 
         if (!str_contains($palette, '{'.$legendKey)) {
-            $dca['palettes'][$paletteKey] = rtrim($palette, ';').';{'.$legendKey.'},'.$fieldName;
+            $dca['palettes'][$paletteKey] = rtrim($palette, ';').';{'.$legendKey.'},'.implode(',', $columnNames);
 
             return;
         }
 
         PaletteManipulator::create()
-            ->addField([$fieldName], $legendKey, PaletteManipulator::POSITION_APPEND)
+            ->addField($columnNames, $legendKey, PaletteManipulator::POSITION_APPEND)
             ->applyToPalette($paletteKey, $table)
         ;
     }
