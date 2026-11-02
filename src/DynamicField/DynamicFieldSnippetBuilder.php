@@ -25,7 +25,12 @@ class DynamicFieldSnippetBuilder
             return '<p class="tl_info">Das Snippet erscheint hier nach dem ersten Speichern.</p>';
         }
 
-        $snippet = $this->buildSnippet((string) $record->fieldType, $fieldName, (string) ($record->optionsSource ?? ''));
+        $snippet = $this->buildSnippet(
+            (string) $record->fieldType,
+            $fieldName,
+            (string) ($record->optionsSource ?? ''),
+            (string) ($record->gallerySize ?? ''),
+        );
         $rows = max(3, substr_count($snippet, "\n") + 1);
 
         return sprintf(
@@ -37,7 +42,7 @@ class DynamicFieldSnippetBuilder
         );
     }
 
-    private function buildSnippet(string $fieldType, string $fieldName, string $optionsSource): string
+    private function buildSnippet(string $fieldType, string $fieldName, string $optionsSource, string $gallerySize): string
     {
         if (DynamicFieldTypeRegistry::SELECT === $fieldType && DynamicFieldTypeRegistry::SOURCE_MODULE === $optionsSource) {
             return <<<PHP
@@ -69,12 +74,14 @@ class DynamicFieldSnippetBuilder
         }
 
         if (DynamicFieldTypeRegistry::GALLERY === $fieldType) {
+            $sizeLiteral = $this->imageSizeLiteral($gallerySize);
+
             return <<<PHP
                 <?php if (\$images = \Contao\StringUtil::deserialize(\$this->{$fieldName}, true)): ?>
                     <div class="dynfield-gallery">
                         <?php foreach (\$images as \$uuid): ?>
                             <?php if (\$filesModel = \Contao\FilesModel::findByUuid(\$uuid)): ?>
-                                <figure><?= \Contao\Image::getHtml(\$filesModel->path, '400') ?></figure>
+                                <figure><?= \Contao\Image::getHtml(\$filesModel->path, {$sizeLiteral}) ?></figure>
                             <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
@@ -99,5 +106,32 @@ class DynamicFieldSnippetBuilder
                 <?= \$this->{$fieldName} ?>
             <?php endif; ?>
             PHP;
+    }
+
+    /**
+     * Baut aus dem gespeicherten "gallerySize"-Wert (Format des
+     * imageSize-Widgets: serialisiertes [Breite, Höhe, Modus-ODER-
+     * Preset-ID], siehe Contao\Widgets\ImageSize::validator()) den
+     * PHP-Quelltext-Ausdruck fürs Snippet. Bei reiner Preset-Auswahl
+     * (Breite/Höhe leer) reicht Contaos Image::getHtml() die bloße
+     * ID als String - kompakter als das volle Array.
+     */
+    private function imageSizeLiteral(string $raw): string
+    {
+        if ('' === $raw) {
+            return "'400'";
+        }
+
+        $size = StringUtil::deserialize($raw, true);
+
+        if (
+            \is_numeric($size[2] ?? null)
+            && '' === (string) ($size[0] ?? '')
+            && '' === (string) ($size[1] ?? '')
+        ) {
+            return var_export((string) $size[2], true);
+        }
+
+        return '['.implode(', ', array_map(static fn ($part): string => var_export($part, true), $size)).']';
     }
 }

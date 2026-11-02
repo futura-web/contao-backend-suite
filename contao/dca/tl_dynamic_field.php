@@ -56,7 +56,8 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
     // + submitOnChange): "contentElementType" nur bei Zieltabelle
     // "Inhaltselemente"; "optionsSource" + "selectOptions" (Hilfetext
     // dort erklärt, dass Letzteres nur bei Quelle "Frei eingetippt"
-    // greift) zusammen nur bei Feldtyp "Select".
+    // greift) zusammen nur bei Feldtyp "Select"; "gallerySize" nur bei
+    // Feldtyp "Galerie".
     //
     // WICHTIG zum Schlüsselformat: Contaos PaletteBuilder::getPalette()
     // sucht bei einem NICHT-Checkbox-Selektorfeld (hier: zwei
@@ -71,6 +72,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
     'subpalettes' => [
         'targetTable_'.DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE => 'contentElementType',
         'fieldType_'.DynamicFieldTypeRegistry::SELECT => 'optionsSource,selectOptions',
+        'fieldType_'.DynamicFieldTypeRegistry::GALLERY => 'gallerySize',
     ],
     'fields' => [
         'id' => [
@@ -170,6 +172,18 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'inputType' => 'listWizard',
             'eval' => ['multiple' => true, 'tl_class' => 'clr'],
             'sql' => 'blob NULL',
+        ],
+        'gallerySize' => [
+            // Options kommen von DynamicFieldGallerySizeOptionsListener
+            // (liest die tl_image_size-Presets des aktuellen Benutzers,
+            // 1:1 nach dem Muster von Contao-Cores
+            // ImageSizeOptionsListener für tl_content.size usw.).
+            'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['gallerySize'],
+            'exclude' => true,
+            'inputType' => 'imageSize',
+            'reference' => &$GLOBALS['TL_LANG']['MSC'],
+            'eval' => ['rgxp' => 'natural', 'includeBlankOption' => true, 'nospace' => true, 'helpwizard' => true, 'tl_class' => 'w50 clr'],
+            'sql' => "varchar(255) NOT NULL default ''",
         ],
         'fieldName' => [
             // Technischer Spaltenname, automatisch aus "fieldLabel"
