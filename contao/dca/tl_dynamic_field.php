@@ -113,13 +113,16 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'sql' => "varchar(128) NOT NULL default ''",
         ],
         'contentElementType' => [
+            // Mehrfachauswahl seit 2026-11-02 (Nutzerwunsch): leer
+            // gelassen = alle kuratierten Typen (DynamicFieldInjector::
+            // paletteKeysFor()), sonst nur die angehakten.
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'],
             'exclude' => true,
-            'inputType' => 'select',
+            'inputType' => 'checkbox',
             'options' => array_keys(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES),
             'reference' => DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES,
-            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'tl_class' => 'w33', 'chosen' => true],
-            'sql' => "varchar(32) NOT NULL default ''",
+            'eval' => ['multiple' => true, 'tl_class' => 'w33'],
+            'sql' => 'blob NULL',
         ],
         'fieldType' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'],

@@ -66,14 +66,10 @@ class DynamicFieldSchemaSync
             return;
         }
 
-        if (DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE === $targetTable
-            && !isset(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES[(string) $row['contentElementType']])
-        ) {
-            Message::addError('Feld-Builder: Bitte einen Inhaltselement-Typ wählen, Feld wurde nicht angelegt.');
-
-            return;
-        }
-
+        // Keine Pflichtprüfung mehr für "contentElementType" - seit der
+        // Umstellung auf Mehrfachauswahl (2026-11-02) bedeutet "nichts
+        // ausgewählt" bewusst "bei allen Typen", siehe
+        // DynamicFieldInjector::paletteKeysFor().
         if (DynamicFieldTypeRegistry::SELECT === (string) $row['fieldType']
             && !isset(DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS[(string) $row['optionsSource']])
         ) {

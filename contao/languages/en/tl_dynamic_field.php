@@ -11,7 +11,7 @@ $GLOBALS['TL_LANG']['tl_dynamic_field']['active'] =['Active', 'Only active field
 $GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Target table', 'Which area (events, news or FAQ) the new field should appear in. Deliberately scoped to these three content areas.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['legend'] = ['Placement', 'Which existing section the field is added to, or "New section at the end".'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'] = ['New section title', 'Only relevant when "New section" was selected above. Fields sharing the same title land in the same section. Locked after the first save.'];
-$GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'] = ['Content element type', 'Only for target "Content elements": which type (e.g. Text, Image) the field should appear on. Each type has its own form, hence this is required. Locked after the first save.'];
+$GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'] = ['Content element type(s)', 'Only for target "Content elements": which types (e.g. Text, Image) the field should appear on. Multiple selection possible. Nothing selected = all available types. Only changeable after the first save as long as the column still holds no real data.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldType'] = ['Field type', 'Which kind of input field to create.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldLabel'] = ['Name', 'Visible label in the form. Also used to derive the technical field name.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['fieldDescription'] = ['Help text', 'Optional explanatory text shown below the field.'];

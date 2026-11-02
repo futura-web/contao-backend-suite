@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Contao\Input;
+use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldSchemaSync;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
@@ -193,7 +194,22 @@ class DynamicFieldAdminFormInjector
             return $value;
         }
 
-        if ((string) $value === (string) $row['currentValue']) {
+        // Beide Seiten einheitlich als sortiertes Array normalisieren,
+        // bevor verglichen wird - deckt sowohl einfache Skalarfelder
+        // (targetTable, fieldType, ...; StringUtil::deserialize() mit
+        // forceArray wickelt einen Skalar einfach in ein Einzelelement-
+        // Array) als auch das seit 2026-11-02 mehrwertige
+        // "contentElementType" (Checkbox-Mehrfachauswahl) gleich ab,
+        // unabhängig davon, ob Contao den save_callback mit einem
+        // bereits serialisierten String oder einem rohen Array
+        // aufruft - beides kommt bei Mehrfachfeldern je nach
+        // Contao-Codepfad vor.
+        $incoming = \is_array($value) ? $value : StringUtil::deserialize((string) $value, true);
+        $stored = StringUtil::deserialize((string) $row['currentValue'], true);
+        sort($incoming);
+        sort($stored);
+
+        if ($incoming === $stored) {
             return $value;
         }
 

@@ -6,6 +6,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
+use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DbalException;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
@@ -103,9 +104,15 @@ class DynamicFieldInjector
                 continue;
             }
 
-            $paletteKey = $this->paletteKeyFor($table, $row);
+            // Bei Inhaltselementen ggf. MEHRERE Typ-Paletten (Mehrfach-
+            // auswahl, leer = alle kuratierten Typen); bei allen anderen
+            // Tabellen immer genau "default".
+            $paletteKeys = array_values(array_filter(
+                $this->paletteKeysFor($table, $row),
+                static fn (string $key): bool => \is_string($dca['palettes'][$key] ?? null),
+            ));
 
-            if (null === $paletteKey || !\is_string($dca['palettes'][$paletteKey] ?? null)) {
+            if ([] === $paletteKeys) {
                 // Inhaltselemente ohne (mehr) gültigen Typ, oder eine
                 // Typ-Palette, die es in dieser Contao-Version gar nicht
                 // (mehr) gibt - konservativ überspringen statt in eine
@@ -126,7 +133,9 @@ class DynamicFieldInjector
                 }
             }
 
-            $this->injectIntoPalette($table, $paletteKey, $dca, $row, $columnNames);
+            foreach ($paletteKeys as $paletteKey) {
+                $this->injectIntoPalette($table, $paletteKey, $dca, $row, $columnNames);
+            }
         }
     }
 
@@ -222,21 +231,28 @@ class DynamicFieldInjector
     /**
      * Normalfall: die "default"-Palette der Zieltabelle. Inhaltselemente
      * haben stattdessen pro Typ eine eigene Palette (siehe
-     * DynamicFieldTableRegistry-Klassenkommentar) - dort wird die
-     * Palette des konkret gewählten Typs (tl_content.type-Wert)
-     * verwendet.
+     * DynamicFieldTableRegistry-Klassenkommentar) und können seit
+     * 2026-11-02 mehrere Typen gleichzeitig abdecken (Mehrfachauswahl-
+     * Checkbox) - leer gelassen = alle kuratierten Typen
+     * (DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES).
      *
      * @param array<string, mixed> $row
+     *
+     * @return list<string>
      */
-    private function paletteKeyFor(string $table, array $row): string|null
+    private function paletteKeysFor(string $table, array $row): array
     {
         if (DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE !== $table) {
-            return 'default';
+            return ['default'];
         }
 
-        $type = (string) ($row['contentElementType'] ?? '');
+        $selected = StringUtil::deserialize($row['contentElementType'] ?? '', true);
 
-        return isset(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES[$type]) ? $type : null;
+        if ([] === $selected) {
+            return array_keys(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES);
+        }
+
+        return array_values(array_intersect($selected, array_keys(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES)));
     }
 
     /**
