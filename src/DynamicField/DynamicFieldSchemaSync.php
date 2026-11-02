@@ -6,6 +6,7 @@ namespace Futuraweb\ContaoBackendSuite\DynamicField;
 
 use Contao\DataContainer;
 use Contao\Message;
+use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DbalException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -58,18 +59,22 @@ class DynamicFieldSchemaSync
             return;
         }
 
-        $targetTable = (string) $row['targetTable'];
+        // Mehrfachauswahl seit 2026-11-02: EIN Feld kann jetzt gleich-
+        // zeitig in mehreren Zieltabellen angelegt werden (je eine
+        // eigene Spalte unter demselben technischen Namen) - unbekannte
+        // Tabellen (z.B. veraltete Auswahl) werden stillschweigend
+        // rausgefiltert statt die ganze Anlage zu blockieren.
+        $targetTables = array_values(array_intersect(
+            StringUtil::deserialize($row['targetTable'] ?? '', true),
+            $this->tableRegistry->getTables(),
+        ));
 
-        if (!\in_array($targetTable, $this->tableRegistry->getTables(), true)) {
-            Message::addError(sprintf('Feld-Builder: "%s" ist keine bekannte Zieltabelle, Feld wurde nicht angelegt.', $targetTable));
+        if ([] === $targetTables) {
+            Message::addError('Feld-Builder: Bitte mindestens eine bekannte Zieltabelle wählen, Feld wurde nicht angelegt.');
 
             return;
         }
 
-        // Keine Pflichtprüfung mehr für "contentElementType" - seit der
-        // Umstellung auf Mehrfachauswahl (2026-11-02) bedeutet "nichts
-        // ausgewählt" bewusst "bei allen Typen", siehe
-        // DynamicFieldInjector::paletteKeysFor().
         if (DynamicFieldTypeRegistry::SELECT === (string) $row['fieldType']
             && !isset(DynamicFieldTypeRegistry::OPTIONS_SOURCE_LABELS[(string) $row['optionsSource']])
         ) {
@@ -81,41 +86,45 @@ class DynamicFieldSchemaSync
         $oldRow = $this->preSaveRows[(int) $dc->id] ?? null;
         unset($this->preSaveRows[(int) $dc->id]);
 
+        $oldTargetTables = null !== $oldRow ? StringUtil::deserialize($oldRow['targetTable'] ?? '', true) : [];
+        $oldFieldType = null !== $oldRow ? (string) $oldRow['fieldType'] : (string) $row['fieldType'];
         $existingFieldName = (string) $row['fieldName'];
 
         // Der technische Name/Spaltenort darf nur neu bestimmt werden,
-        // wenn er noch nie vergeben wurde, oder die bisherige Spalte
-        // nachweislich noch keine echten Daten enthält (siehe
-        // Klassenkommentar zu $preSaveRows + fieldHasData()) - sonst
-        // bleibt alles wie gehabt für immer eingefroren.
+        // wenn er noch nie vergeben wurde, oder die bisherigen Spalten
+        // (in JEDER bisherigen Zieltabelle) nachweislich noch keine
+        // echten Daten enthalten (siehe Klassenkommentar zu
+        // $preSaveRows + fieldHasDataAnywhere()) - sonst bleibt alles
+        // wie gehabt für immer eingefroren.
         $mayRederive = '' === $existingFieldName || (
-            null !== $oldRow
-            && !$this->fieldHasData((string) $oldRow['targetTable'], $existingFieldName, (string) $oldRow['fieldType'])
+            null !== $oldRow && !$this->fieldHasDataAnywhere($oldTargetTables, $existingFieldName, $oldFieldType)
         );
 
         $fieldName = $mayRederive ? $this->deriveFieldName($row) : $existingFieldName;
+        $nameChanged = $fieldName !== $existingFieldName;
+        $typeChanged = $oldFieldType !== (string) $row['fieldType'];
 
-        // Ob sich der tatsächliche Speicherort geändert hat (Name,
-        // Zieltabelle ODER Feldtyp) - unabhängig davon, ob der NAME
-        // dabei zufällig gleich bleibt (z.B. nur die Zieltabelle
-        // gewechselt, "Name" unverändert). Nur dann die alte(n)
-        // Spalte(n) aufräumen, sonst blieben sie als ungenutzte Leiche
-        // in der alten Tabelle/mit dem alten Typ liegen.
-        $locationChanged = $mayRederive && null !== $oldRow && '' !== $existingFieldName && (
-            $fieldName !== $existingFieldName
-            || (string) $oldRow['targetTable'] !== $targetTable
-            || (string) $oldRow['fieldType'] !== (string) $row['fieldType']
-        );
-
-        if ($locationChanged) {
-            $this->dropColumnsIfEmpty((string) $oldRow['targetTable'], $existingFieldName, (string) $oldRow['fieldType']);
+        // Für jede ALTE Zieltabelle, die entweder (a) jetzt nicht mehr
+        // ausgewählt ist, oder (b) sich Name/Typ geändert haben (dann
+        // muss auch in einer weiterhin ausgewählten Tabelle die alte
+        // Spalte weichen) - aber nur, wenn mayRederive (sonst ist
+        // wegen guardImmutable() ohnehin nichts an targetTable/
+        // fieldType/customFieldName wirklich geändert worden).
+        if ($mayRederive && null !== $oldRow && '' !== $existingFieldName) {
+            foreach ($oldTargetTables as $oldTable) {
+                if ($nameChanged || $typeChanged || !\in_array($oldTable, $targetTables, true)) {
+                    $this->dropColumnsIfEmpty((string) $oldTable, $existingFieldName, $oldFieldType);
+                }
+            }
         }
 
-        if ($fieldName !== $existingFieldName) {
+        if ($nameChanged) {
             $this->connection->update('tl_dynamic_field', ['fieldName' => $fieldName], ['id' => (int) $dc->id]);
         }
 
-        $this->ensureColumn($targetTable, $fieldName, $row);
+        foreach ($targetTables as $targetTable) {
+            $this->ensureColumn((string) $targetTable, $fieldName, $row);
+        }
     }
 
     /**
@@ -149,10 +158,12 @@ class DynamicFieldSchemaSync
             return $value;
         }
 
-        if ($this->fieldHasData((string) $row['targetTable'], (string) $row['fieldName'], (string) $row['fieldType'])) {
+        $tables = StringUtil::deserialize($row['targetTable'] ?? '', true);
+
+        if ($this->fieldHasDataAnywhere($tables, (string) $row['fieldName'], (string) $row['fieldType'])) {
             throw new \RuntimeException(sprintf(
                 'Dieses Feld enthält bereits Daten in "%s" und kann deshalb nicht deaktiviert werden - Redakteure würden sonst den Zugriff darauf verlieren, obwohl die Daten noch da sind.',
-                $row['targetTable'],
+                implode(', ', $tables),
             ));
         }
 
@@ -182,10 +193,12 @@ class DynamicFieldSchemaSync
             return;
         }
 
-        if ($this->fieldHasData((string) $row['targetTable'], (string) $row['fieldName'], (string) $row['fieldType'])) {
+        $tables = StringUtil::deserialize($row['targetTable'] ?? '', true);
+
+        if ($this->fieldHasDataAnywhere($tables, (string) $row['fieldName'], (string) $row['fieldType'])) {
             throw new \RuntimeException(sprintf(
                 'Dieses Feld enthält bereits Daten in "%s" und kann deshalb nicht gelöscht werden - bitte stattdessen deaktivieren, oder die Daten zuerst anderweitig sichern.',
-                $row['targetTable'],
+                implode(', ', $tables),
             ));
         }
     }
@@ -242,6 +255,24 @@ class DynamicFieldSchemaSync
         }
 
         return (int) $count > 0;
+    }
+
+    /**
+     * Wie fieldHasData(), aber über MEHRERE Zieltabellen gleichzeitig
+     * (Mehrfachauswahl seit 2026-11-02) - "hat Daten" sobald auch nur
+     * EINE der Tabellen welche enthält.
+     *
+     * @param list<string> $tables
+     */
+    public function fieldHasDataAnywhere(array $tables, string $fieldName, string $fieldType): bool
+    {
+        foreach ($tables as $table) {
+            if ($this->fieldHasData((string) $table, $fieldName, $fieldType)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -340,8 +371,8 @@ class DynamicFieldSchemaSync
     }
 
     /**
-     * Entfernt die Spalte(n) eines Feldes, dessen technischer Name sich
-     * gerade ändert (siehe resolveFieldName()) - der neue Name bekommt
+     * Entfernt die Spalte(n) eines Feldes, dessen technischer Name/Ort
+     * sich gerade ändert (siehe onSubmit()) - der neue Name bekommt
      * gleich danach über ensureColumn() seine eigene(n) frische(n)
      * Spalte(n), die alte(n) würde(n) sonst als ungenutzte Leiche(n) in
      * der (alten) Zieltabelle liegen bleiben. Prüft NOCHMALS selbst, ob

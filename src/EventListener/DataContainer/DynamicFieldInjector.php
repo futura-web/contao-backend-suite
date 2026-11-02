@@ -43,13 +43,22 @@ class DynamicFieldInjector
             // try/catch wuerde contao:migrate (und jeder andere
             // Erstaufruf vor der Migration) an der fehlenden Tabelle
             // scheitern.
-            $rows = $this->connection->fetchAllAssociative(
-                "SELECT * FROM tl_dynamic_field WHERE targetTable = ? AND active = '1' AND fieldName != ''",
-                [$table],
+            //
+            // "targetTable" ist seit der Mehrfachauswahl (2026-11-02) ein
+            // serialisiertes Array - kein direkter SQL-Vergleich mehr
+            // möglich, deshalb alle aktiven Einträge laden und die
+            // passende Tabelle per deserialize()+in_array() rausfiltern.
+            $allRows = $this->connection->fetchAllAssociative(
+                "SELECT * FROM tl_dynamic_field WHERE active = '1' AND fieldName != ''",
             );
         } catch (DbalException) {
             return;
         }
+
+        $rows = array_filter(
+            $allRows,
+            static fn (array $row): bool => \in_array($table, StringUtil::deserialize($row['targetTable'] ?? '', true), true),
+        );
 
         if ([] === $rows) {
             return;

@@ -8,7 +8,7 @@ $GLOBALS['TL_LANG']['tl_dynamic_field']['field_legend'] = 'Field properties';
 $GLOBALS['TL_LANG']['tl_dynamic_field']['snippet_legend'] = 'Template snippet';
 
 $GLOBALS['TL_LANG']['tl_dynamic_field']['active'] =['Active', 'Only active fields show up in the target table. To remove a field, deactivate it here instead of deleting it - the data stays intact.'];
-$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Target table', 'Which area (events, news or FAQ) the new field should appear in. Deliberately scoped to these three content areas.'];
+$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Target table(s)', 'Which area (events, news, FAQ, content elements) the new field should appear in. Multiple selection possible - with several tables selected, a matching column is created in each of them. Only changeable after the first save as long as the column(s) still hold no real data.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['legend'] = ['Placement', 'Which existing section the field is added to, or "New section at the end".'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'] = ['New section title', 'Only relevant when "New section" was selected above. Fields sharing the same title land in the same section. Locked after the first save.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'] = ['Content element type(s)', 'Only for target "Content elements": which types (e.g. Text, Image) the field should appear on. Multiple selection possible. Nothing selected = all available types. Only changeable after the first save as long as the column still holds no real data.'];

@@ -20,14 +20,19 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
     ],
     'list' => [
         'sorting' => [
+            // Nicht mehr nach "targetTable" sortierbar, seit das seit
+            // 2026-11-02 ein serialisiertes Array (Mehrfachauswahl) ist.
             'mode' => DataContainer::MODE_SORTED,
-            'fields' => ['targetTable', 'fieldLabel'],
+            'fields' => ['fieldLabel'],
             'flag' => DataContainer::SORT_ASC,
             'panelLayout' => 'filter;search,limit',
         ],
         'label' => [
+            // "targetTable" ist seit der Mehrfachauswahl ein
+            // serialisiertes Array - label_callback statt format+fields,
+            // damit es lesbar (Tabellennamen statt Rohwert) dargestellt
+            // wird. Siehe DynamicFieldAdminFormInjector.
             'fields' => ['fieldLabel', 'targetTable', 'fieldType'],
-            'format' => '%s <span class="tl_gray">[%s / %s]</span>',
         ],
         // "toggle" erlaubt Deaktivieren direkt per Klick in der Liste
         // (Syntax 1:1 aus Contao-Core, tl_news.php "published").
@@ -49,19 +54,31 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
         ],
     ],
     'palettes' => [
-        '__selector__' => ['targetTable', 'fieldType'],
-        'default' => '{active_legend},active;{target_legend},targetTable,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,customFieldName;{snippet_legend},snippetPreview',
+        // "targetTable" steht bewusst NICHT (mehr) im __selector__: seit
+        // der Umstellung auf Mehrfachauswahl (2026-11-02) ist es ein
+        // Array-Wert, und Contaos PaletteBuilder::getPalette() baut den
+        // Subpaletten-Schlüssel per "(string) $trigger" - bei einem
+        // Array würde das zur Laufzeit zu "feld_Array" verkommen (PHPs
+        // "Array to string conversion"), der Subpalette-Eintrag für
+        // "tl_content" also NIE mehr treffen, ohne jede Fehlermeldung
+        // (derselbe Fallstrick wie beim Subpaletten-Schlüsselformat
+        // weiter unten, nur diesmal durch den Array-Wert ausgelöst).
+        // "contentElementType" ist deshalb jetzt einfach immer Teil der
+        // normalen Palette statt hinter einer Subpalette versteckt -
+        // der Hilfetext erklärt, dass es nur bei "Inhaltselemente"
+        // relevant ist.
+        '__selector__' => ['fieldType'],
+        'default' => '{active_legend},active;{target_legend},targetTable,contentElementType,legend,newLegendTitle;{field_legend},fieldType,fieldLabel,fieldDescription,customFieldName;{snippet_legend},snippetPreview',
     ],
-    // Subpaletten, gesteuert über die Selector-Felder oben (__selector__
-    // + submitOnChange): "contentElementType" nur bei Zieltabelle
-    // "Inhaltselemente"; "optionsSource" + "selectOptions" (Hilfetext
+    // Subpaletten, gesteuert über das Selector-Feld oben (__selector__
+    // + submitOnChange): "optionsSource" + "selectOptions" (Hilfetext
     // dort erklärt, dass Letzteres nur bei Quelle "Frei eingetippt"
     // greift) zusammen nur bei Feldtyp "Select"; "gallerySize" nur bei
     // Feldtyp "Galerie".
     //
     // WICHTIG zum Schlüsselformat: Contaos PaletteBuilder::getPalette()
-    // sucht bei einem NICHT-Checkbox-Selektorfeld (hier: zwei
-    // select-Felder) unter dem Schlüssel "<Feldname>_<Wert>"
+    // sucht bei einem NICHT-Checkbox-Selektorfeld (hier: ein
+    // select-Feld) unter dem Schlüssel "<Feldname>_<Wert>"
     // (z.B. "fieldType_select"), NICHT einfach unter dem Wert allein
     // (z.B. "select") - nur ein einzelnes, nicht-multiples
     // Checkbox-Feld würde den Wert als eigenen Schlüssel verwenden
@@ -70,7 +87,6 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
     // Fehlermeldung - genau das war die Ursache der vorherigen beiden
     // fehlgeschlagenen Versuche.
     'subpalettes' => [
-        'targetTable_'.DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE => 'contentElementType',
         'fieldType_'.DynamicFieldTypeRegistry::SELECT => 'optionsSource,selectOptions',
         'fieldType_'.DynamicFieldTypeRegistry::GALLERY => 'gallerySize',
     ],
@@ -90,12 +106,16 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'sql' => "char(1) NOT NULL default '1'",
         ],
         'targetTable' => [
+            // Mehrfachauswahl seit 2026-11-02 (Nutzerwunsch): EIN Feld
+            // kann dadurch gleichzeitig in mehreren Tabellen (je eine
+            // eigene Spalte) angelegt werden - siehe
+            // DynamicFieldSchemaSync::onSubmit().
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'],
             'exclude' => true,
-            'inputType' => 'select',
+            'inputType' => 'checkbox',
             // options_callback wird von DynamicFieldAdminFormInjector gesetzt.
-            'eval' => ['mandatory' => true, 'submitOnChange' => true, 'includeBlankOption' => true, 'tl_class' => 'w33', 'chosen' => true],
-            'sql' => "varchar(64) NOT NULL default ''",
+            'eval' => ['mandatory' => true, 'multiple' => true, 'submitOnChange' => true, 'tl_class' => 'clr'],
+            'sql' => 'blob NULL',
         ],
         'legend' => [
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['legend'],
@@ -115,13 +135,17 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
         'contentElementType' => [
             // Mehrfachauswahl seit 2026-11-02 (Nutzerwunsch): leer
             // gelassen = alle kuratierten Typen (DynamicFieldInjector::
-            // paletteKeysFor()), sonst nur die angehakten.
+            // paletteKeysFor()), sonst nur die angehakten. Immer Teil
+            // der normalen Palette (nicht mehr hinter einer Subpalette
+            // versteckt, siehe Kommentar bei "__selector__" oben) - nur
+            // relevant, wenn "Inhaltselemente" bei "Zieltabelle"
+            // mit ausgewählt ist.
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'],
             'exclude' => true,
             'inputType' => 'checkbox',
             'options' => array_keys(DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES),
             'reference' => DynamicFieldTableRegistry::CONTENT_ELEMENT_TYPES,
-            'eval' => ['multiple' => true, 'tl_class' => 'w33'],
+            'eval' => ['multiple' => true, 'tl_class' => 'clr'],
             'sql' => 'blob NULL',
         ],
         'fieldType' => [
@@ -190,7 +214,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
         ],
         'fieldName' => [
             // Technischer Spaltenname, automatisch aus "fieldLabel"
-            // abgeleitet (siehe DynamicFieldSchemaSync::resolveFieldName) -
+            // abgeleitet (siehe DynamicFieldSchemaSync::deriveFieldName) -
             // kein eigenes Eingabefeld, nicht in der Palette.
             'sql' => "varchar(64) NOT NULL default ''",
         ],

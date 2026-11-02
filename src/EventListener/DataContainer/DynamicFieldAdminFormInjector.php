@@ -11,6 +11,7 @@ use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldSchemaSync;
 use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
+use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTypeRegistry;
 
 /**
  * Hängt die service-abhängigen Teile des Feld-Builder-eigenen Formulars
@@ -66,14 +67,25 @@ class DynamicFieldAdminFormInjector
         };
 
         $dca['fields']['legend']['options_callback'] = function (DataContainer $dc): array {
-            $targetTable = Input::post('targetTable');
+            $posted = Input::post('targetTable');
+            $targetTables = \is_array($posted) ? $posted : null;
 
-            if (!\is_string($targetTable) || '' === $targetTable) {
+            if (null === $targetTables) {
                 $record = $dc->activeRecord;
-                $targetTable = \is_object($record) ? (string) ($record->targetTable ?? '') : '';
+                $targetTables = \is_object($record) ? StringUtil::deserialize($record->targetTable ?? '', true) : [];
             }
 
-            return $this->tableRegistry->getLegendOptions('' !== $targetTable ? $targetTable : null);
+            // Bei mehreren (oder keiner) ausgewählten Zieltabellen können
+            // deren Abschnitte unterschiedlich heißen - dann bleibt nur
+            // "neuer Abschnitt" sinnvoll anbietbar (dasselbe Muster wie
+            // bei Inhaltselementen, die sowieso nie eine gemeinsame
+            // Palette haben). Nur bei GENAU einer Tabelle lassen sich
+            // deren echte Abschnitte sicher auflisten.
+            return $this->tableRegistry->getLegendOptions(1 === \count($targetTables) ? (string) reset($targetTables) : null);
+        };
+
+        $dca['list']['label']['label_callback'] = function (array $row): string {
+            return $this->formatListLabel($row);
         };
 
         $dca['fields']['active']['save_callback'][] = function (mixed $value, DataContainer $dc): mixed {
@@ -133,8 +145,8 @@ class DynamicFieldAdminFormInjector
             return;
         }
 
-        if (!$this->schemaSync->fieldHasData(
-            (string) ($record->targetTable ?? ''),
+        if (!$this->schemaSync->fieldHasDataAnywhere(
+            StringUtil::deserialize($record->targetTable ?? '', true),
             (string) ($record->fieldName ?? ''),
             (string) ($record->fieldType ?? ''),
         )) {
@@ -160,12 +172,12 @@ class DynamicFieldAdminFormInjector
         // tl_form/tl_content) - ein nachträglicher Wechsel würde bereits
         // gespeicherte Werte falsch auslegen.
         $dca['fields']['optionsSource']['eval']['readonly'] = true;
-        // "customFieldName" bestimmt den technischen Namen nur beim
-        // ALLERERSTEN Speichern (siehe DynamicFieldSchemaSync::
-        // resolveFieldName(), bricht bei bereits gesetztem "fieldName"
-        // sofort ab) - eine spätere Änderung hätte also ohnehin keinen
-        // Effekt mehr auf den echten Spaltennamen. Gesperrt, damit das
-        // nicht den Eindruck erweckt, man könnte die Spalte so umbenennen.
+        // "customFieldName" beeinflusst den technischen Namen nur, wenn
+        // DynamicFieldSchemaSync::deriveFieldName() neu ableiten darf
+        // (siehe dortiger Klassenkommentar) - sobald Daten existieren,
+        // hätte eine Änderung ohnehin keinen Effekt mehr. Gesperrt, damit
+        // das nicht den Eindruck erweckt, man könnte die Spalte dann noch
+        // umbenennen.
         $dca['fields']['customFieldName']['eval']['readonly'] = true;
     }
 
@@ -213,7 +225,9 @@ class DynamicFieldAdminFormInjector
             return $value;
         }
 
-        if (!$this->schemaSync->fieldHasData((string) $row['targetTable'], (string) $row['fieldName'], (string) $row['fieldType'])) {
+        $oldTargetTables = StringUtil::deserialize((string) $row['targetTable'], true);
+
+        if (!$this->schemaSync->fieldHasDataAnywhere($oldTargetTables, (string) $row['fieldName'], (string) $row['fieldType'])) {
             // Noch keine echten Daten in der Zielspalte - eine Korrektur
             // (z.B. versehentlich falscher Feldtyp im Baumodus gewählt)
             // bleibt gefahrlos möglich, solange nichts verloren gehen kann.
@@ -226,8 +240,37 @@ class DynamicFieldAdminFormInjector
             '"%s" kann nicht mehr geändert werden, da "%s" in "%s" bereits Daten enthält.',
             $label,
             $row['fieldName'],
-            $row['targetTable'],
+            implode(', ', $oldTargetTables),
         ));
+    }
+
+    /**
+     * Da "targetTable" seit der Mehrfachauswahl (2026-11-02) ein
+     * serialisiertes Array ist, kann die Listenansicht nicht mehr per
+     * simplem "format"+"fields" formatieren (würde den Rohwert zeigen) -
+     * stattdessen hier die Tabellennamen lesbar auflösen und
+     * kommagetrennt zusammenfassen.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function formatListLabel(array $row): string
+    {
+        $tableLabels = $this->tableRegistry->getTableOptions();
+        $selected = StringUtil::deserialize($row['targetTable'] ?? '', true);
+
+        $tables = implode(', ', array_map(
+            static fn (string $table): string => $tableLabels[$table] ?? $table,
+            $selected,
+        ));
+
+        $fieldType = (string) ($row['fieldType'] ?? '');
+
+        return sprintf(
+            '%s <span class="tl_gray">[%s / %s]</span>',
+            StringUtil::specialchars((string) ($row['fieldLabel'] ?? '')),
+            StringUtil::specialchars('' !== $tables ? $tables : '–'),
+            StringUtil::specialchars(DynamicFieldTypeRegistry::LABELS[$fieldType] ?? $fieldType),
+        );
     }
 
     /**

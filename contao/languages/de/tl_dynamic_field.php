@@ -8,7 +8,7 @@ $GLOBALS['TL_LANG']['tl_dynamic_field']['field_legend'] = 'Feld-Eigenschaften';
 $GLOBALS['TL_LANG']['tl_dynamic_field']['snippet_legend'] = 'Template-Snippet';
 
 $GLOBALS['TL_LANG']['tl_dynamic_field']['active'] =['Aktiv', 'Nur aktive Felder erscheinen in der Zieltabelle. Zum Entfernen eines Feldes hier deaktivieren statt löschen - die Daten bleiben erhalten.'];
-$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Zieltabelle', 'In welchem Bereich (Termine, Nachrichten oder FAQ) das neue Feld erscheinen soll. Bewusst auf diese drei Content-Bereiche eingegrenzt.'];
+$GLOBALS['TL_LANG']['tl_dynamic_field']['targetTable'] = ['Zieltabelle(n)', 'In welchem Bereich (Termine, Nachrichten, FAQ, Inhaltselemente) das neue Feld erscheinen soll. Mehrfachauswahl möglich - bei mehreren ausgewählten Tabellen wird in jeder eine eigene, gleichnamige Spalte angelegt. Nach dem ersten Speichern nur noch änderbar, solange die Spalte(n) noch keine echten Daten enthalten.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['legend'] = ['Platzierung', 'In welchen bestehenden Abschnitt das Feld eingefügt wird, oder "Neuer eigener Abschnitt am Ende".'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['newLegendTitle'] = ['Titel des neuen Abschnitts', 'Nur relevant, wenn oben "Neuer eigener Abschnitt" gewählt wurde. Felder mit demselben Titel landen im selben Abschnitt. Nach dem ersten Speichern nicht mehr änderbar.'];
 $GLOBALS['TL_LANG']['tl_dynamic_field']['contentElementType'] = ['Inhaltselement-Typ(en)', 'Nur bei Zieltabelle "Inhaltselemente": bei welchen Typen (z.B. Text, Bild) das Feld erscheinen soll. Mehrfachauswahl möglich. Nichts ausgewählt = bei allen verfügbaren Typen. Nach dem ersten Speichern nur noch änderbar, solange die Spalte noch keine echten Daten enthält.'];
