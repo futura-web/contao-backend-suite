@@ -22,20 +22,26 @@ use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
 class DynamicFieldAdminFormInjector
 {
     /**
-     * Felder, die nach dem allerersten Speichern (sobald "fieldName"
-     * feststeht) nicht mehr geändert werden dürfen - serverseitig
-     * durchgesetzt per save_callback, siehe guardImmutable(). Die
-     * "readonly"-Eval-Option allein reicht NICHT: Contao rendert sie bei
-     * inputType "select" zwar als HTML-Attribut, aber "readonly" hat
-     * dort schlicht keine Wirkung (nur "disabled" würde den Browser am
-     * Ändern hindern, das würde das Feld aber auch nicht mehr
-     * mitsenden) - am 2026-11-02 live beobachtet: "fieldType" ließ sich
-     * trotz readonly-Markierung ganz normal im Browser umstellen und
-     * wurde anstandslos gespeichert.
+     * Felder, die gesperrt werden, SOBALD die Zielspalte(n) echte Daten
+     * enthalten - serverseitig durchgesetzt per save_callback, siehe
+     * guardImmutable(). Bewusst NICHT schon ab dem allerersten
+     * Speichern gesperrt (Stand bis 2026-11-02): ein Redakteur, der im
+     * Baumodus z.B. versehentlich den falschen Feldtyp wählt, soll das
+     * noch gefahrlos korrigieren können, solange niemand etwas in das
+     * Feld eingetragen hat - erst wenn wirklich Daten drinstehen, würde
+     * eine Änderung sie verwaisen lassen.
+     *
+     * Die "readonly"-Eval-Option allein reicht als Schutz NICHT: Contao
+     * rendert sie bei inputType "select" zwar als HTML-Attribut, aber
+     * "readonly" hat dort schlicht keine Wirkung (nur "disabled" würde
+     * den Browser am Ändern hindern, das würde das Feld aber auch nicht
+     * mehr mitsenden) - am 2026-11-02 live beobachtet: "fieldType" ließ
+     * sich trotz readonly-Markierung ganz normal im Browser umstellen
+     * und wurde anstandslos gespeichert.
      *
      * @var list<string>
      */
-    private const IMMUTABLE_AFTER_CREATION = [
+    private const LOCKED_ONCE_DATA_EXISTS = [
         'targetTable', 'fieldType', 'contentElementType', 'optionsSource', 'newLegendTitle', 'customFieldName',
     ];
 
@@ -73,14 +79,14 @@ class DynamicFieldAdminFormInjector
             return $this->schemaSync->guardDeactivation($value, $dc);
         };
 
-        foreach (self::IMMUTABLE_AFTER_CREATION as $field) {
+        foreach (self::LOCKED_ONCE_DATA_EXISTS as $field) {
             $dca['fields'][$field]['save_callback'][] = function (mixed $value, DataContainer $dc) use ($field): mixed {
                 return $this->guardImmutable($field, $value, $dc);
             };
         }
 
         $dca['config']['onload_callback'][] = function (DataContainer|null $dc = null): void {
-            $this->lockAfterCreation($dc);
+            $this->lockWhenDataExists($dc);
         };
 
         $dca['config']['onsubmit_callback'][] = function (DataContainer $dc): void {
@@ -97,13 +103,14 @@ class DynamicFieldAdminFormInjector
     }
 
     /**
-     * Zieltabelle und Feldtyp dürfen nach dem ersten erfolgreichen
-     * Speichern (sobald "fieldName" feststeht und die Spalte existiert)
-     * nicht mehr geändert werden - sonst würde das DCA auf eine andere
-     * Tabelle/einen anderen Typ zeigen, während die tatsächliche
-     * DB-Spalte noch in der alten Tabelle mit dem alten Typ liegt, was
-     * beim nächsten Speichern eines Datensatzes dort zu einem
-     * SQL-Fehler ("Unknown column") führen würde.
+     * Zieltabelle und Feldtyp dürfen NICHT mehr geändert werden, sobald
+     * die Zielspalte(n) echte Daten enthalten - sonst würde das DCA auf
+     * eine andere Tabelle/einen anderen Typ zeigen, während die
+     * tatsächliche DB-Spalte (mit den schon erfassten Daten!) noch in
+     * der alten Tabelle mit dem alten Typ liegt, was beim nächsten
+     * Speichern eines Datensatzes dort zu einem SQL-Fehler ("Unknown
+     * column") führen würde. Solange noch nichts eingetragen wurde,
+     * bleibt alles frei korrigierbar (siehe LOCKED_ONCE_DATA_EXISTS).
      *
      * "Titel des neuen Abschnitts" aus demselben Grund gesperrt: Der
      * Titel bestimmt direkt den Namen des Palette-Abschnitts (siehe
@@ -113,7 +120,7 @@ class DynamicFieldAdminFormInjector
      * bleiben, was für Redakteure, die sich an die bisherige Stelle
      * gewöhnt haben, überraschend wäre.
      */
-    private function lockAfterCreation(DataContainer|null $dc): void
+    private function lockWhenDataExists(DataContainer|null $dc): void
     {
         if (!$dc instanceof DataContainer) {
             return;
@@ -122,6 +129,19 @@ class DynamicFieldAdminFormInjector
         $record = $dc->activeRecord;
 
         if (!\is_object($record) || '' === (string) ($record->fieldName ?? '')) {
+            return;
+        }
+
+        if (!$this->schemaSync->fieldHasData(
+            (string) ($record->targetTable ?? ''),
+            (string) ($record->fieldName ?? ''),
+            (string) ($record->fieldType ?? ''),
+        )) {
+            // Noch keine echten Daten in der Zielspalte - alles bleibt
+            // änderbar. guardImmutable() ist der tatsächlich
+            // durchsetzende Schutz, dieser readonly-Eval ist nur der
+            // optische Hinweis dazu (und wirkt ohnehin nur bei
+            // Text-Eingabefeldern wirklich, siehe Klassenkommentar oben).
             return;
         }
 
@@ -149,11 +169,13 @@ class DynamicFieldAdminFormInjector
     }
 
     /**
-     * Echte, serverseitige Durchsetzung von IMMUTABLE_AFTER_CREATION -
+     * Echte, serverseitige Durchsetzung von LOCKED_ONCE_DATA_EXISTS -
      * siehe Klassenkommentar dort, warum die reine "readonly"-Eval-
      * Option dafür nicht ausreicht. Wirft bei einem Änderungsversuch
      * eine Exception, die Contao als normalen Formular-Validierungs-
-     * fehler anzeigt (wie guardDeactivation() in DynamicFieldSchemaSync).
+     * fehler anzeigt (wie guardDeactivation() in DynamicFieldSchemaSync)
+     * - aber nur, wenn die Zielspalte(n) schon echte Daten enthalten;
+     * davor bleibt alles frei korrigierbar.
      */
     private function guardImmutable(string $field, mixed $value, DataContainer $dc): mixed
     {
@@ -162,7 +184,7 @@ class DynamicFieldAdminFormInjector
         }
 
         $row = $this->connection->fetchAssociative(
-            sprintf('SELECT fieldName, %s AS currentValue FROM tl_dynamic_field WHERE id = ?', $field),
+            sprintf('SELECT fieldName, targetTable, fieldType, %s AS currentValue FROM tl_dynamic_field WHERE id = ?', $field),
             [(int) $dc->id],
         );
 
@@ -171,13 +193,25 @@ class DynamicFieldAdminFormInjector
             return $value;
         }
 
-        if ((string) $value !== (string) $row['currentValue']) {
-            $label = $GLOBALS['TL_LANG']['tl_dynamic_field'][$field][0] ?? $field;
-
-            throw new \RuntimeException(sprintf('"%s" kann nach dem ersten Speichern nicht mehr geändert werden.', $label));
+        if ((string) $value === (string) $row['currentValue']) {
+            return $value;
         }
 
-        return $value;
+        if (!$this->schemaSync->fieldHasData((string) $row['targetTable'], (string) $row['fieldName'], (string) $row['fieldType'])) {
+            // Noch keine echten Daten in der Zielspalte - eine Korrektur
+            // (z.B. versehentlich falscher Feldtyp im Baumodus gewählt)
+            // bleibt gefahrlos möglich, solange nichts verloren gehen kann.
+            return $value;
+        }
+
+        $label = $GLOBALS['TL_LANG']['tl_dynamic_field'][$field][0] ?? $field;
+
+        throw new \RuntimeException(sprintf(
+            '"%s" kann nicht mehr geändert werden, da "%s" in "%s" bereits Daten enthält.',
+            $label,
+            $row['fieldName'],
+            $row['targetTable'],
+        ));
     }
 
     /**

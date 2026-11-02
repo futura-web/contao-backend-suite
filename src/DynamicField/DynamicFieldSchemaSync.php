@@ -142,7 +142,14 @@ class DynamicFieldSchemaSync
         }
     }
 
-    private function fieldHasData(string $table, string $fieldName, string $fieldType): bool
+    /**
+     * Public, da auch DynamicFieldAdminFormInjector::guardImmutable()
+     * dieselbe Prüfung braucht: Zieltabelle/Feldtyp/etc. dürfen frei
+     * korrigiert werden, solange die Zielspalte noch keine echten Daten
+     * enthält - erst sobald wirklich etwas drinsteht, lohnt sich der
+     * Schutz vor einem verwaisenden Datensatz.
+     */
+    public function fieldHasData(string $table, string $fieldName, string $fieldType): bool
     {
         if (!preg_match('/^[a-z0-9_]+$/', $table) || !preg_match('/^dynField[A-Za-z0-9]+$/', $fieldName)) {
             // Sollte nach den Validierungen beim Anlegen nie vorkommen -
