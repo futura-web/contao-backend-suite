@@ -160,11 +160,16 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'sql' => "varchar(32) NOT NULL default ''",
         ],
         'selectOptions' => [
+            // Listeneinträge-Wizard statt Freitext-Textarea (seit
+            // 2026-11-02, auf Nutzerwunsch): gleiches Muster wie Contaos
+            // natives "Aufzählung"-Inhaltselement (tl_content.listitems).
+            // Der eingegebene Text ist zugleich Wert UND Label - siehe
+            // DynamicFieldTypeRegistry::parseSelectOptions().
             'label' => &$GLOBALS['TL_LANG']['tl_dynamic_field']['selectOptions'],
             'exclude' => true,
-            'inputType' => 'textarea',
-            'eval' => ['tl_class' => 'clr', 'rows' => 4, 'placeholder' => "wert1:Label 1\nwert2:Label 2", 'decodeEntities' => true],
-            'sql' => 'text NULL',
+            'inputType' => 'listWizard',
+            'eval' => ['multiple' => true, 'tl_class' => 'clr'],
+            'sql' => 'blob NULL',
         ],
         'fieldName' => [
             // Technischer Spaltenname, automatisch aus "fieldLabel"

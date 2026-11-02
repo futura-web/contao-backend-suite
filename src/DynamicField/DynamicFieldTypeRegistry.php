@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Futuraweb\ContaoBackendSuite\DynamicField;
 
+use Contao\StringUtil;
+
 /**
  * Zentrale Definition der im Feld-Builder wählbaren Feldtypen: welches
  * DCA-Feld daraus entsteht, welchen SQL-Typ die neue Spalte bekommt, und
@@ -215,25 +217,27 @@ class DynamicFieldTypeRegistry
     }
 
     /**
-     * Parst eine Zeile-für-Zeile-Liste "wert:Label" aus dem
-     * "selectOptions"-Textarea. Zeilen ohne ":" verwenden den gleichen
-     * Text für Wert und Label.
+     * Liest die per listWizard erfassten Listeneinträge aus dem
+     * serialisierten "selectOptions"-Feld (wie Contaos natives
+     * "Aufzählung"-Inhaltselement, siehe tl_content.listitems). Seit
+     * 2026-11-02 kein "wert:Label"-Freitext mehr - der eingegebene Text
+     * ist zugleich gespeicherter Wert UND Label, ein separates
+     * "wert1" ist damit obsolet.
      *
-     * @return array<string, string>
+     * @return array<string, string> Wert => Label (identisch)
      */
     public function parseSelectOptions(string $raw): array
     {
         $options = [];
 
-        foreach (preg_split('/\r?\n/', $raw) ?: [] as $line) {
-            $line = trim($line);
+        foreach (StringUtil::deserialize($raw, true) as $item) {
+            $item = trim((string) $item);
 
-            if ('' === $line) {
+            if ('' === $item) {
                 continue;
             }
 
-            [$value, $optionLabel] = array_pad(explode(':', $line, 2), 2, $line);
-            $options[trim($value)] = trim($optionLabel);
+            $options[$item] = $item;
         }
 
         return $options;
