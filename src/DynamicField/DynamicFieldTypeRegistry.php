@@ -187,33 +187,51 @@ class DynamicFieldTypeRegistry
         $description = '' !== (string) $row['fieldDescription']
             ? (string) $row['fieldDescription']
             : 'Über den Feld-Builder angelegtes Link-Feld.';
+        $widthClass = $this->groupWidthClass(4);
 
         return [
             self::LINK_SUFFIX_URL => [
                 'label' => [$baseLabel.' - Link', $description],
                 'exclude' => true,
                 'inputType' => 'text',
-                'eval' => ['rgxp' => 'url', 'tl_class' => 'w50', 'placeholder' => 'https://... oder /interne-seite'],
+                'eval' => ['rgxp' => 'url', 'tl_class' => $widthClass, 'placeholder' => 'https://... oder /interne-seite'],
             ],
             self::LINK_SUFFIX_TITLE => [
                 'label' => [$baseLabel.' - Titel', 'Optionaler Title-/Tooltip-Text des Links.'],
                 'exclude' => true,
                 'inputType' => 'text',
-                'eval' => ['tl_class' => 'w50', 'maxlength' => 255],
+                'eval' => ['tl_class' => $widthClass, 'maxlength' => 255],
             ],
             self::LINK_SUFFIX_TEXT => [
                 'label' => [$baseLabel.' - Text', 'Sichtbarer Linktext bzw. Button-Beschriftung.'],
                 'exclude' => true,
                 'inputType' => 'text',
-                'eval' => ['tl_class' => 'w50', 'maxlength' => 255],
+                'eval' => ['tl_class' => $widthClass, 'maxlength' => 255],
             ],
             self::LINK_SUFFIX_TARGET => [
                 'label' => [$baseLabel.' - Neuer Tab', 'Link in neuem Tab öffnen (target="_blank").'],
                 'exclude' => true,
                 'inputType' => 'checkbox',
-                'eval' => ['tl_class' => 'w50 m12'],
+                'eval' => ['tl_class' => $widthClass.' m12'],
             ],
         ];
+    }
+
+    /**
+     * Contao-Spaltenbreite für eine Gruppe von $count zusammengehörigen
+     * Teilfeldern, die gemeinsam in einer Reihe stehen sollen: durch 4
+     * teilbare Anzahl (4, 8, ...) -> w25, sonst durch 3 teilbare (3, 6,
+     * 9, ...) -> w33, bei genau 2 Elementen -> w50. Allgemein gehalten
+     * (nicht Link-spezifisch), falls ein künftiger weiterer
+     * zusammengesetzter Feldtyp eine andere Elementanzahl braucht.
+     */
+    private function groupWidthClass(int $count): string
+    {
+        return match (true) {
+            $count > 0 && 0 === $count % 4 => 'w25',
+            $count > 0 && 0 === $count % 3 => 'w33',
+            default => 'w50',
+        };
     }
 
     /**
