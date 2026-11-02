@@ -270,9 +270,31 @@ class DynamicFieldInjector
         // teilen - der zuletzt verarbeitete hätte gewonnen).
         $legendKey = $this->legendKeyForTitle((string) $row['newLegendTitle']);
         $GLOBALS['TL_LANG'][$table][$legendKey] = '' !== (string) $row['newLegendTitle'] ? (string) $row['newLegendTitle'] : 'Weitere Felder';
+        $newSegment = '{'.$legendKey.'},'.implode(',', $columnNames);
 
         if (!str_contains($palette, '{'.$legendKey)) {
-            $dca['palettes'][$paletteKey] = rtrim($palette, ';').';{'.$legendKey.'},'.implode(',', $columnNames);
+            // Bei Inhaltselementen (einziger Fall ohne wählbare
+            // Platzierung, siehe oben) landet der neue Abschnitt bewusst
+            // VOR "Template-Einstellungen" ({template_legend}, in
+            // praktisch jeder Inhaltselement-Palette vorhanden) statt
+            // ganz am Palette-Ende - Nutzerwunsch, damit eigene Felder
+            // nicht hinter den Experten-/Sichtbarkeits-Abschnitten
+            // verschwinden. Bei allen anderen Tabellen bleibt es beim
+            // wörtlich versprochenen "am Ende" (dort ist "Platzierung"
+            // eine echte Wahl mit mehreren Optionen).
+            $templatePos = DynamicFieldTableRegistry::CONTENT_ELEMENT_TABLE === $table
+                ? strpos($palette, '{template_legend')
+                : false;
+
+            if (false !== $templatePos) {
+                $before = rtrim(substr($palette, 0, $templatePos), ';');
+                $after = substr($palette, $templatePos);
+                $dca['palettes'][$paletteKey] = $before.';'.$newSegment.';'.$after;
+
+                return;
+            }
+
+            $dca['palettes'][$paletteKey] = rtrim($palette, ';').';'.$newSegment;
 
             return;
         }
