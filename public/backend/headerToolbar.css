@@ -18,6 +18,12 @@
     padding: 14px 13px;
     margin: 0 0 -2px;
     overflow: hidden;
+    /* "text-indent" schiebt nur die ERSTE Zeile aus der Box - ohne
+     * "white-space: nowrap" bricht das Linklabel (z.B. "Seitenlayouts")
+     * bei dieser schmalen Breite in mehrere Zeilen um, und die
+     * umgebrochenen Folgezeilen bekommen den Indent nicht mehr und
+     * blieben als einzelne Buchstaben zwischen den Icons sichtbar. */
+    white-space: nowrap;
     text-indent: 32px;
     line-height: 18px;
     background-repeat: no-repeat;
