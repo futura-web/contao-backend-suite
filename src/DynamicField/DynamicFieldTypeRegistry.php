@@ -37,7 +37,7 @@ class DynamicFieldTypeRegistry
         self::SELECT => 'Auswahlliste (Select)',
         self::CHECKBOX => 'Checkbox (Ja/Nein)',
         self::GALLERY => 'Galerie (mehrere Bilder)',
-        self::LINK => 'Link/Button (URL + Titel + Text + neuer Tab)',
+        self::LINK => 'Link-Set (URL + Text + Titel + neuer Tab)',
     ];
 
     // Nur für Feldtyp "Select" relevant: woher die Optionen kommen.
@@ -177,6 +177,16 @@ class DynamicFieldTypeRegistry
     }
 
     /**
+     * Labels/Hilfetexte/Reihenfolge bewusst 1:1 von Contaos eigenem
+     * "Hyperlink"-Inhaltselement übernommen (tl_content: url, linkTitle,
+     * titleText, target - dort trägt "linkTitle" trotz des Namens den
+     * sichtbaren LINKTEXT und "titleText" das title-Attribut, siehe
+     * Contao-Core-Sprachdateien) - Redakteure kennen dieses Muster
+     * bereits aus dem nativen Link-Inhaltselement. Bleibt bewusst
+     * NICHT mandatory (anders als Contaos eigenes "url"), da dieses
+     * Feld hier immer ein optionales Extra ist (siehe das durchgängige
+     * "<?php if ($this->feld): ?>"-Snippet-Muster).
+     *
      * @param array<string, mixed> $row
      *
      * @return array<string, array<string, mixed>> Suffix => DCA-Felddefinition
@@ -184,32 +194,29 @@ class DynamicFieldTypeRegistry
     private function buildLinkDcaFields(array $row): array
     {
         $baseLabel = (string) $row['fieldLabel'];
-        $description = '' !== (string) $row['fieldDescription']
-            ? (string) $row['fieldDescription']
-            : 'Über den Feld-Builder angelegtes Link-Feld.';
         $widthClass = $this->groupWidthClass(4);
 
         return [
             self::LINK_SUFFIX_URL => [
-                'label' => [$baseLabel.' - Link', $description],
+                'label' => [$baseLabel.' - Link-Adresse', 'Geben Sie eine Web-Adresse (http://…), eine E-Mail-Adresse (mailto:…) oder ein Insert-Tag ein.'],
                 'exclude' => true,
                 'inputType' => 'text',
-                'eval' => ['rgxp' => 'url', 'tl_class' => $widthClass, 'placeholder' => 'https://... oder /interne-seite'],
+                'eval' => ['rgxp' => 'url', 'decodeEntities' => true, 'maxlength' => 2048, 'dcaPicker' => true, 'tl_class' => $widthClass],
             ],
-            self::LINK_SUFFIX_TITLE => [
-                'label' => [$baseLabel.' - Titel', 'Optionaler Title-/Tooltip-Text des Links.'],
+            self::LINK_SUFFIX_TEXT => [
+                'label' => [$baseLabel.' - Link-Text', 'Der Link-Text wird anstelle der Link-Adresse angezeigt.'],
                 'exclude' => true,
                 'inputType' => 'text',
                 'eval' => ['tl_class' => $widthClass, 'maxlength' => 255],
             ],
-            self::LINK_SUFFIX_TEXT => [
-                'label' => [$baseLabel.' - Text', 'Sichtbarer Linktext bzw. Button-Beschriftung.'],
+            self::LINK_SUFFIX_TITLE => [
+                'label' => [$baseLabel.' - Link-Titel', 'Der Link-Titel wird als title-Attribut im HTML-Markup eingefügt.'],
                 'exclude' => true,
                 'inputType' => 'text',
                 'eval' => ['tl_class' => $widthClass, 'maxlength' => 255],
             ],
             self::LINK_SUFFIX_TARGET => [
-                'label' => [$baseLabel.' - Neuer Tab', 'Link in neuem Tab öffnen (target="_blank").'],
+                'label' => [$baseLabel.' - In neuem Fenster öffnen', 'Den Link in einem neuen Browserfenster öffnen.'],
                 'exclude' => true,
                 'inputType' => 'checkbox',
                 'eval' => ['tl_class' => $widthClass.' m12'],

@@ -90,13 +90,15 @@ class DynamicFieldSnippetBuilder
         }
 
         if (DynamicFieldTypeRegistry::LINK === $fieldType) {
-            // "Link" legt 4 zusammengehörige Spalten an (siehe
+            // "Link-Set" legt 4 zusammengehörige Spalten an (siehe
             // DynamicFieldTypeRegistry::columnSqlTypes()): die URL unter
-            // "fieldName" selbst, Titel/Text/Blank-Checkbox unter
-            // "fieldName" + Suffix "Title"/"Text"/"Target".
+            // "fieldName" selbst, Text/Titel/Blank-Checkbox unter
+            // "fieldName" + Suffix "Text"/"Title"/"Target". Bewusst OHNE
+            // class="btn" - Redakteure ergänzen beim Einfügen selbst
+            // eine passende Klasse, falls nötig.
             return <<<PHP
                 <?php if (\$this->{$fieldName}): ?>
-                    <a href="<?= \$this->{$fieldName} ?>"<?= \$this->{$fieldName}Title ? ' title="'.\Contao\StringUtil::specialchars(\$this->{$fieldName}Title).'"' : '' ?><?= \$this->{$fieldName}Target ? ' target="_blank" rel="noopener noreferrer"' : '' ?> class="btn"><?= \$this->{$fieldName}Text ?: 'Mehr erfahren' ?></a>
+                    <a href="<?= \$this->{$fieldName} ?>"<?= \$this->{$fieldName}Title ? ' title="'.\Contao\StringUtil::specialchars(\$this->{$fieldName}Title).'"' : '' ?><?= \$this->{$fieldName}Target ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= \$this->{$fieldName}Text ?: 'Mehr erfahren' ?></a>
                 <?php endif; ?>
                 PHP;
         }

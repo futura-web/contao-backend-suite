@@ -22,6 +22,21 @@ class DynamicFieldSchemaSync
 {
     private const NAME_PREFIX = 'dynField';
 
+    /**
+     * Schnappschuss der Zeile VOR dem gerade laufenden Speichern, id =>
+     * Zeile - siehe guardDeactivation() (wo er befüllt wird) und
+     * onSubmit() (wo er für die "nur umbenennen/verschieben, solange
+     * keine Daten existieren"-Logik konsumiert wird). Contao führt alle
+     * save_callbacks VOR dem eigentlichen UPDATE aus, onsubmit_callback
+     * aber DANACH - zu dem Zeitpunkt stehen in der DB schon die NEUEN
+     * Werte, die alten (insbesondere die alte Zieltabelle/der alte
+     * Feldtyp, falls diese sich gerade ändern) wären sonst nicht mehr
+     * rekonstruierbar.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private array $preSaveRows = [];
+
     public function __construct(
         private readonly Connection $connection,
         private readonly DynamicFieldTableRegistry $tableRegistry,
@@ -67,9 +82,40 @@ class DynamicFieldSchemaSync
             return;
         }
 
-        $fieldName = $this->resolveFieldName($row);
+        $oldRow = $this->preSaveRows[(int) $dc->id] ?? null;
+        unset($this->preSaveRows[(int) $dc->id]);
 
-        if ($fieldName !== (string) $row['fieldName']) {
+        $existingFieldName = (string) $row['fieldName'];
+
+        // Der technische Name/Spaltenort darf nur neu bestimmt werden,
+        // wenn er noch nie vergeben wurde, oder die bisherige Spalte
+        // nachweislich noch keine echten Daten enthält (siehe
+        // Klassenkommentar zu $preSaveRows + fieldHasData()) - sonst
+        // bleibt alles wie gehabt für immer eingefroren.
+        $mayRederive = '' === $existingFieldName || (
+            null !== $oldRow
+            && !$this->fieldHasData((string) $oldRow['targetTable'], $existingFieldName, (string) $oldRow['fieldType'])
+        );
+
+        $fieldName = $mayRederive ? $this->deriveFieldName($row) : $existingFieldName;
+
+        // Ob sich der tatsächliche Speicherort geändert hat (Name,
+        // Zieltabelle ODER Feldtyp) - unabhängig davon, ob der NAME
+        // dabei zufällig gleich bleibt (z.B. nur die Zieltabelle
+        // gewechselt, "Name" unverändert). Nur dann die alte(n)
+        // Spalte(n) aufräumen, sonst blieben sie als ungenutzte Leiche
+        // in der alten Tabelle/mit dem alten Typ liegen.
+        $locationChanged = $mayRederive && null !== $oldRow && '' !== $existingFieldName && (
+            $fieldName !== $existingFieldName
+            || (string) $oldRow['targetTable'] !== $targetTable
+            || (string) $oldRow['fieldType'] !== (string) $row['fieldType']
+        );
+
+        if ($locationChanged) {
+            $this->dropColumnsIfEmpty((string) $oldRow['targetTable'], $existingFieldName, (string) $oldRow['fieldType']);
+        }
+
+        if ($fieldName !== $existingFieldName) {
             $this->connection->update('tl_dynamic_field', ['fieldName' => $fieldName], ['id' => (int) $dc->id]);
         }
 
@@ -86,16 +132,22 @@ class DynamicFieldSchemaSync
      */
     public function guardDeactivation(mixed $value, DataContainer $dc): mixed
     {
-        if ('1' === (string) $value || !$dc->id) {
+        if (!$dc->id) {
             return $value;
         }
 
-        $row = $this->connection->fetchAssociative(
-            'SELECT active, targetTable, fieldName, fieldType FROM tl_dynamic_field WHERE id = ?',
-            [(int) $dc->id],
-        );
+        $row = $this->connection->fetchAssociative('SELECT * FROM tl_dynamic_field WHERE id = ?', [(int) $dc->id]);
 
-        if (false === $row || '1' !== (string) $row['active'] || '' === (string) $row['fieldName']) {
+        // "active" ist immer Teil der Palette und wird deshalb bei JEDEM
+        // Speichern validiert, unabhängig davon, ob sich der Wert
+        // tatsächlich ändert - genau deshalb eignet sich dieser Callback
+        // als zuverlässiger Ort für den Vor-Speichern-Schnappschuss (vgl.
+        // Klassenkommentar zu $preSaveRows).
+        if (false !== $row) {
+            $this->preSaveRows[(int) $dc->id] = $row;
+        }
+
+        if ('1' === (string) $value || false === $row || '1' !== (string) $row['active'] || '' === (string) $row['fieldName']) {
             // War vorher schon inaktiv, oder hat noch gar keine echte
             // Spalte (z.B. frisch dupliziert) - nichts zu schützen.
             return $value;
@@ -197,16 +249,17 @@ class DynamicFieldSchemaSync
     }
 
     /**
+     * Leitet einen frischen technischen Namen aus "Eigene Bezeichnung"
+     * (falls gesetzt) bzw. sonst "Name" ab - aufgerufen von onSubmit(),
+     * wenn entweder noch gar keiner vergeben ist (Erstanlage), oder die
+     * bisherige Spalte nachweislich noch keine echten Daten enthält
+     * (siehe dortiges $mayRederive) und ein Umbenennen deshalb gefahrlos
+     * möglich ist.
+     *
      * @param array<string, mixed> $row
      */
-    private function resolveFieldName(array $row): string
+    private function deriveFieldName(array $row): string
     {
-        $existing = (string) ($row['fieldName'] ?? '');
-
-        if ('' !== $existing) {
-            return $existing;
-        }
-
         $custom = (string) ($row['customFieldName'] ?? '');
         $base = self::NAME_PREFIX.$this->studlify('' !== $custom ? $custom : (string) $row['fieldLabel']);
         $name = $base;
@@ -286,6 +339,44 @@ class DynamicFieldSchemaSync
                     $exception->getMessage(),
                     $this->sshMigrateHint,
                 ));
+            }
+        }
+    }
+
+    /**
+     * Entfernt die Spalte(n) eines Feldes, dessen technischer Name sich
+     * gerade ändert (siehe resolveFieldName()) - der neue Name bekommt
+     * gleich danach über ensureColumn() seine eigene(n) frische(n)
+     * Spalte(n), die alte(n) würde(n) sonst als ungenutzte Leiche(n) in
+     * der (alten) Zieltabelle liegen bleiben. Prüft NOCHMALS selbst, ob
+     * wirklich keine Daten drinstehen (nie blind auf den Aufrufer
+     * vertrauen) - verstößt nicht gegen die "nie automatisch droppen"-
+     * Regel, die sich ausdrücklich nur auf Spalten MIT echten Daten
+     * bezieht.
+     */
+    private function dropColumnsIfEmpty(string $table, string $fieldName, string $fieldType): void
+    {
+        if (!preg_match('/^dynField[A-Za-z0-9]+$/', $fieldName) || !preg_match('/^[a-z0-9_]+$/', $table)) {
+            return;
+        }
+
+        if ($this->fieldHasData($table, $fieldName, $fieldType)) {
+            return;
+        }
+
+        foreach (array_keys($this->typeRegistry->columnSqlTypes($fieldType)) as $suffix) {
+            $columnName = $fieldName.$suffix;
+
+            if (!$this->columnExists($table, $columnName)) {
+                continue;
+            }
+
+            try {
+                $this->connection->executeStatement(sprintf('ALTER TABLE `%s` DROP COLUMN `%s`', $table, $columnName));
+            } catch (DbalException) {
+                // Konservativ ignorieren - die neue Spalte wird trotzdem
+                // angelegt, die alte (nachweislich leere) bleibt dann
+                // halt ungenutzt liegen statt den Rename abzubrechen.
             }
         }
     }
