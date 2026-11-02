@@ -111,6 +111,37 @@ class DynamicFieldSchemaSync
         return $value;
     }
 
+    /**
+     * ondelete_callback: ein Feld-Eintrag darf gelöscht werden, solange
+     * seine Spalte in der Zieltabelle keine echten Daten enthält -
+     * dieselbe Prüfung wie bei guardDeactivation(). Die Spalte selbst
+     * wird dabei NIE gedroppt, nur der Konfigurationseintrag entfernt -
+     * eine eventuell doch vorhandene, leere Spalte bleibt harmlos liegen
+     * (siehe die etablierte "nie automatisch droppen"-Regel).
+     */
+    public function guardDeletion(DataContainer $dc): void
+    {
+        if (!$dc->id) {
+            return;
+        }
+
+        $row = $this->connection->fetchAssociative(
+            'SELECT targetTable, fieldName, fieldType FROM tl_dynamic_field WHERE id = ?',
+            [(int) $dc->id],
+        );
+
+        if (false === $row || '' === (string) $row['fieldName']) {
+            return;
+        }
+
+        if ($this->fieldHasData((string) $row['targetTable'], (string) $row['fieldName'], (string) $row['fieldType'])) {
+            throw new \RuntimeException(sprintf(
+                'Dieses Feld enthält bereits Daten in "%s" und kann deshalb nicht gelöscht werden - bitte stattdessen deaktivieren, oder die Daten zuerst anderweitig sichern.',
+                $row['targetTable'],
+            ));
+        }
+    }
+
     private function fieldHasData(string $table, string $fieldName, string $fieldType): bool
     {
         if (!preg_match('/^[a-z0-9_]+$/', $table) || !preg_match('/^dynField[A-Za-z0-9]+$/', $fieldName)) {

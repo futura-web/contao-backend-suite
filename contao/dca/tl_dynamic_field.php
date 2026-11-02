@@ -29,13 +29,13 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
             'fields' => ['fieldLabel', 'targetTable', 'fieldType'],
             'format' => '%s <span class="tl_gray">[%s / %s]</span>',
         ],
-        // Bewusst kein "delete" - angelegte Felder werden nur über die
-        // "Aktiv"-Checkbox deaktiviert, nie samt DB-Spalte gelöscht (
-        // Nutzerentscheidung, siehe Memory feedback-no-hardcoded-env-values
-        // /project-contao-backend-suite). "toggle" erlaubt genau dieses
-        // Deaktivieren direkt per Klick in der Liste, ohne den Datensatz
-        // zu öffnen - Syntax 1:1 aus Contao-Core (tl_news.php,
-        // "published") übernommen.
+        // "toggle" erlaubt Deaktivieren direkt per Klick in der Liste
+        // (Syntax 1:1 aus Contao-Core, tl_news.php "published").
+        // "delete" ist seit 2026-11-02 auf Nutzerwunsch erlaubt, aber
+        // über ondelete_callback (DynamicFieldSchemaSync::
+        // guardDeletion()) abgesichert: nur möglich, solange die Spalte
+        // in der Zieltabelle keine echten Daten enthält. Die Spalte
+        // selbst wird dabei nie automatisch gedroppt.
         'operations' => [
             'edit',
             'copy',
@@ -44,6 +44,7 @@ $GLOBALS['TL_DCA']['tl_dynamic_field'] = [
                 'icon' => 'visible.svg',
                 'showInHeader' => true,
             ],
+            'delete',
             'show',
         ],
     ],

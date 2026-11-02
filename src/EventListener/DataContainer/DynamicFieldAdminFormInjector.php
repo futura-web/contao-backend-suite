@@ -21,6 +21,24 @@ use Futuraweb\ContaoBackendSuite\DynamicField\DynamicFieldTableRegistry;
 #[AsHook('loadDataContainer')]
 class DynamicFieldAdminFormInjector
 {
+    /**
+     * Felder, die nach dem allerersten Speichern (sobald "fieldName"
+     * feststeht) nicht mehr geändert werden dürfen - serverseitig
+     * durchgesetzt per save_callback, siehe guardImmutable(). Die
+     * "readonly"-Eval-Option allein reicht NICHT: Contao rendert sie bei
+     * inputType "select" zwar als HTML-Attribut, aber "readonly" hat
+     * dort schlicht keine Wirkung (nur "disabled" würde den Browser am
+     * Ändern hindern, das würde das Feld aber auch nicht mehr
+     * mitsenden) - am 2026-11-02 live beobachtet: "fieldType" ließ sich
+     * trotz readonly-Markierung ganz normal im Browser umstellen und
+     * wurde anstandslos gespeichert.
+     *
+     * @var list<string>
+     */
+    private const IMMUTABLE_AFTER_CREATION = [
+        'targetTable', 'fieldType', 'contentElementType', 'optionsSource', 'newLegendTitle', 'customFieldName',
+    ];
+
     public function __construct(
         private readonly DynamicFieldTableRegistry $tableRegistry,
         private readonly DynamicFieldSchemaSync $schemaSync,
@@ -55,12 +73,22 @@ class DynamicFieldAdminFormInjector
             return $this->schemaSync->guardDeactivation($value, $dc);
         };
 
+        foreach (self::IMMUTABLE_AFTER_CREATION as $field) {
+            $dca['fields'][$field]['save_callback'][] = function (mixed $value, DataContainer $dc) use ($field): mixed {
+                return $this->guardImmutable($field, $value, $dc);
+            };
+        }
+
         $dca['config']['onload_callback'][] = function (DataContainer|null $dc = null): void {
             $this->lockAfterCreation($dc);
         };
 
         $dca['config']['onsubmit_callback'][] = function (DataContainer $dc): void {
             $this->schemaSync->onSubmit($dc);
+        };
+
+        $dca['config']['ondelete_callback'][] = function (DataContainer $dc): void {
+            $this->schemaSync->guardDeletion($dc);
         };
 
         $dca['config']['oncopy_callback'][] = function (int $insertId): void {
@@ -118,6 +146,38 @@ class DynamicFieldAdminFormInjector
         // Effekt mehr auf den echten Spaltennamen. Gesperrt, damit das
         // nicht den Eindruck erweckt, man könnte die Spalte so umbenennen.
         $dca['fields']['customFieldName']['eval']['readonly'] = true;
+    }
+
+    /**
+     * Echte, serverseitige Durchsetzung von IMMUTABLE_AFTER_CREATION -
+     * siehe Klassenkommentar dort, warum die reine "readonly"-Eval-
+     * Option dafür nicht ausreicht. Wirft bei einem Änderungsversuch
+     * eine Exception, die Contao als normalen Formular-Validierungs-
+     * fehler anzeigt (wie guardDeactivation() in DynamicFieldSchemaSync).
+     */
+    private function guardImmutable(string $field, mixed $value, DataContainer $dc): mixed
+    {
+        if (!$dc->id) {
+            return $value;
+        }
+
+        $row = $this->connection->fetchAssociative(
+            sprintf('SELECT fieldName, %s AS currentValue FROM tl_dynamic_field WHERE id = ?', $field),
+            [(int) $dc->id],
+        );
+
+        if (false === $row || '' === (string) $row['fieldName']) {
+            // Noch nicht angelegt (kein fieldName) - frei änderbar.
+            return $value;
+        }
+
+        if ((string) $value !== (string) $row['currentValue']) {
+            $label = $GLOBALS['TL_LANG']['tl_dynamic_field'][$field][0] ?? $field;
+
+            throw new \RuntimeException(sprintf('"%s" kann nach dem ersten Speichern nicht mehr geändert werden.', $label));
+        }
+
+        return $value;
     }
 
     /**
