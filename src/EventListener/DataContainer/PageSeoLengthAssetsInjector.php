@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Adds a live character counter below the pageTitle and description fields,
@@ -14,9 +15,17 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 #[AsHook('loadDataContainer')]
 class PageSeoLengthAssetsInjector
 {
+    public function __construct(private readonly UserFeatureRegistry $features)
+    {
+    }
+
     public function __invoke(string $table): void
     {
         if ('tl_page' !== $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::SEO_LENGTH)) {
             return;
         }
 

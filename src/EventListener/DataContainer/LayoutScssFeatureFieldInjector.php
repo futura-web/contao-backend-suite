@@ -9,6 +9,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Contao\Input;
 use Futuraweb\ContaoBackendSuite\ThemeScssFeatures\ScssFeatureSelector;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Fügt eine Checkbox-Liste der optionalen SCSS-Features (die
@@ -25,13 +26,19 @@ class LayoutScssFeatureFieldInjector
     private const FIELD = 'backendSuiteScssFeatures';
     private const LEGEND = 'backend_suite_scss_features_legend';
 
-    public function __construct(private readonly ScssFeatureSelector $selector)
-    {
+    public function __construct(
+        private readonly ScssFeatureSelector $selector,
+        private readonly UserFeatureRegistry $features,
+    ) {
     }
 
     public function __invoke(string $table): void
     {
         if ('tl_layout' !== $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::SCSS_FEATURES)) {
             return;
         }
 

@@ -10,6 +10,7 @@ use Contao\DataContainer;
 use Contao\Input;
 use Futuraweb\ContaoBackendSuite\ThemeFontColor\ColorImporter;
 use Futuraweb\ContaoBackendSuite\ThemeFontColor\FontImporter;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Fügt die Felder für den automatischen Google-Fonts-Import und die
@@ -36,12 +37,17 @@ class ThemeFontColorFieldInjector
     public function __construct(
         private readonly FontImporter $fontImporter,
         private readonly ColorImporter $colorImporter,
+        private readonly UserFeatureRegistry $features,
     ) {
     }
 
     public function __invoke(string $table): void
     {
         if ('tl_theme' !== $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::FONT_COLOR_PICKER)) {
             return;
         }
 

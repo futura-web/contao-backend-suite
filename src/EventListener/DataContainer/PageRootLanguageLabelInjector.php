@@ -8,6 +8,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Contao\DataContainer;
 use Contao\StringUtil;
 use Contao\System;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Shows the language code next to root pages ("Startseiten") in the page
@@ -20,9 +21,17 @@ use Contao\System;
 #[AsHook('loadDataContainer', priority: -100)]
 class PageRootLanguageLabelInjector
 {
+    public function __construct(private readonly UserFeatureRegistry $features)
+    {
+    }
+
     public function __invoke(string $table): void
     {
         if ('tl_page' !== $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::PAGE_ROOT_LANGUAGE)) {
             return;
         }
 

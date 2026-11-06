@@ -58,6 +58,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] Neueste Contao-Version anzeigen — bereits durch den Contao Manager abgedeckt (Versionsnummer + "neuste Version"-Hinweis bei jedem Update-Check), kein eigener Code nötig.
 - [x] **Ordner-Namensbereinigung** — neu angelegte und umbenannte Ordner im Dateimanager werden wie Datei-Uploads bereinigt (siehe unten).
 - [x] **Projekt-Theme-Konfiguration** — Rahmen, Header, Hauptnavigation und Schriftgrößen/Abstände direkt im Theme-Formular pflegen, statt SCSS-Dateien von Hand zu editieren (siehe unten).
+- [x] **Erweiterungen pro Nutzer ausblenden** — ein Admin legt im Benutzer-Formular fest, welche der obigen Erweiterungen (Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features, Schriftarten-/Farben-Picker) für einen bestimmten Nutzer sichtbar sind (siehe unten).
 
 ### Style-Selector: Benutzung
 
@@ -104,6 +105,15 @@ Im Theme-Bearbeiten-Formular gibt es zusätzliche Abschnitte, mit denen sich zen
 Leere Felder lassen den bestehenden SCSS-Wert unangetastet (kein Überschreiben). Die Farb-Dropdowns beziehen ihre Optionen aus den im Feld "Farben" (siehe oben) hinterlegten Variablen; Eckenradius/Abstände aus den `$clampXXpx`-Variablen in `_vars_sizes.scss`.
 
 Der Projekt-Ordner (unter `files/public/<slug>/...`) wird dynamisch über das Theme selbst ermittelt (`tl_theme.templates`), ist also nicht fest verdrahtet — funktioniert automatisch für jedes Theme, das dieser SCSS-Struktur folgt. Beim allerersten Umbenennen eines frisch aus dem Boilerplate-Ordner `project` erzeugten Themes werden `templates/project` und `files/public/project` zudem automatisch in einen aus dem Theme-Namen abgeleiteten Ordnernamen umbenannt.
+
+### Erweiterungen pro Nutzer ausblenden
+
+Nicht jeder Redakteur braucht jede Erweiterung der Suite zu sehen. Ein Admin kann daher im Benutzer-Formular (Backend → **Benutzer** → Nutzer bearbeiten, Legende "Backend-Suite-Erweiterungen") gezielt ankreuzen, welche Erweiterungen für genau diesen Nutzer sichtbar sind: Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features sowie der Schriftarten-/Farben-Picker.
+
+- Nichts angekreuzt (Standard, auch bei allen Bestandsnutzern) bedeutet: alle Erweiterungen sind sichtbar.
+- Admins sehen unabhängig von dieser Einstellung immer alles.
+- Gilt nur für das volle Benutzer-Formular; "Mein Profil" (Selbstbearbeitung) nutzt ein eigenes, festes Feld-Set und ist davon nicht betroffen.
+- Stille Hintergrund-Mechanik ohne eigene Sichtbarkeit (Bild-Shrinker — bereits pro Theme umschaltbar, Ordner-Namensbereinigung, Feld-Builder-Felder) sowie das Modularis-Element (eigenes Bundle) sind hiervon bewusst ausgenommen.
 
 ## Technik
 

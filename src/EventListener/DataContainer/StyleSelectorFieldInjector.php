@@ -10,6 +10,7 @@ use Contao\DataContainer;
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Futuraweb\ContaoBackendSuite\CssStyle\StyleMerger;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Injects the `backendSuiteStyleSelector` field into every DCA table that
@@ -35,12 +36,17 @@ class StyleSelectorFieldInjector
     public function __construct(
         private readonly StyleMerger $styleMerger,
         private readonly Connection $connection,
+        private readonly UserFeatureRegistry $features,
     ) {
     }
 
     public function __invoke(string $table): void
     {
         if ('tl_style_selector' === $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::STYLE_SELECTOR)) {
             return;
         }
 

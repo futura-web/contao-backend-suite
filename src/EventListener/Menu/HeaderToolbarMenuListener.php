@@ -7,6 +7,7 @@ namespace Futuraweb\ContaoBackendSuite\EventListener\Menu;
 use Contao\Controller;
 use Contao\CoreBundle\Event\MenuEvent;
 use Doctrine\DBAL\Connection;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 use Knp\Menu\FactoryInterface;
 use Knp\Menu\ItemInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -38,12 +39,17 @@ class HeaderToolbarMenuListener
     public function __construct(
         private readonly Connection $connection,
         private readonly RouterInterface $router,
+        private readonly UserFeatureRegistry $features,
     ) {
     }
 
     public function __invoke(MenuEvent $event): void
     {
         if ('headerMenu' !== $event->getTree()->getName()) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::TOOLBAR_QUICKLINKS)) {
             return;
         }
 

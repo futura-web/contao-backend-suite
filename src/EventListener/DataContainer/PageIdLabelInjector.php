@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Futuraweb\ContaoBackendSuite\EventListener\DataContainer;
 
 use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Shows each page's ID next to its title in the page tree while the Shift
@@ -15,9 +16,17 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 #[AsHook('loadDataContainer')]
 class PageIdLabelInjector
 {
+    public function __construct(private readonly UserFeatureRegistry $features)
+    {
+    }
+
     public function __invoke(string $table): void
     {
         if ('tl_page' !== $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::PAGE_ID_ALIAS)) {
             return;
         }
 

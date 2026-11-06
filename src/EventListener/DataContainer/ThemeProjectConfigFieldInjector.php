@@ -13,6 +13,7 @@ use Futuraweb\ContaoBackendSuite\ThemeProjectConfig\BoilerplateRenamer;
 use Futuraweb\ContaoBackendSuite\ThemeProjectConfig\BorderImporter;
 use Futuraweb\ContaoBackendSuite\ThemeProjectConfig\HeaderNavImporter;
 use Futuraweb\ContaoBackendSuite\ThemeProjectConfig\TypographyImporter;
+use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
  * Projekt-Theme-Konfiguration: Rahmen, Header, Hauptnavi und
@@ -32,12 +33,17 @@ class ThemeProjectConfigFieldInjector
         private readonly HeaderNavImporter $headerNavImporter,
         private readonly TypographyImporter $typographyImporter,
         private readonly ColorImporter $colorImporter,
+        private readonly UserFeatureRegistry $features,
     ) {
     }
 
     public function __invoke(string $table): void
     {
         if ('tl_theme' !== $table) {
+            return;
+        }
+
+        if (!$this->features->isEnabledForCurrentUser(UserFeatureRegistry::PROJECT_CONFIG)) {
             return;
         }
 
