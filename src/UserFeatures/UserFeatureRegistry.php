@@ -6,6 +6,7 @@ namespace Futuraweb\ContaoBackendSuite\UserFeatures;
 
 use Contao\BackendUser;
 use Contao\StringUtil;
+use Symfony\Bundle\SecurityBundle\Security;
 
 /**
  * Welche der optionalen Backend-Suite-Erweiterungen für den aktuell
@@ -24,6 +25,10 @@ use Contao\StringUtil;
  */
 final class UserFeatureRegistry
 {
+    public function __construct(private readonly Security $security)
+    {
+    }
+
     public const STYLE_SELECTOR = 'style_selector';
     public const TOOLBAR_QUICKLINKS = 'toolbar_quicklinks';
     public const PAGE_ROOT_LANGUAGE = 'page_root_language';
@@ -59,10 +64,16 @@ final class UserFeatureRegistry
      * nie gezielt befüllt worden (NULL oder leer - auch Bestandsnutzer vor
      * Einführung dieses Felds), sind sicherheitshalber alle Erweiterungen
      * aktiv, statt neue Nutzer versehentlich auszuschließen.
+     *
+     * Nutzt Security::getUser() statt BackendUser::getInstance(): Letzteres
+     * instanziiert auch außerhalb eines Backend-Requests (z. B.
+     * contao:migrate, cache:warmup - loadDataContainer läuft auch dort) ein
+     * Nutzerobjekt ohne geladene Datenbankzeile und wirft dabei "Undefined
+     * array key"-Warnings; Security::getUser() liefert dort schlicht null.
      */
     public function isEnabledForCurrentUser(string $feature): bool
     {
-        $user = BackendUser::getInstance();
+        $user = $this->security->getUser();
 
         if (!$user instanceof BackendUser) {
             return true;
