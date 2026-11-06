@@ -14,14 +14,15 @@ use Symfony\Bundle\SecurityBundle\Security;
  * Feld "backendSuiteFeatures" (siehe UserFeatureFieldInjector).
  *
  * Nur die auffälligen, UI-erweiternden Extras stehen hier zur Wahl - stille
- * Hintergrundmechanik (Ordner-Namensbereinigung, Feld-Builder-Felder,
+ * Hintergrundmechanik (Ordner-Namensbereinigung, Feld-Builder-Felder selbst,
  * der bereits pro Theme umschaltbare Bild-Shrinker) wird bewusst nicht
  * aufgenommen, da sie kein "Erweiterung ein-/ausblenden"-Bedürfnis bedient.
  *
- * Modularis-Element fehlt hier ebenfalls: das lebt im separaten Bundle
- * futuraweb/contao-modularis-builder, das umgekehrt von dieser Suite
- * abhängt - ein Zugriff von dort auf dieses Bundle würde eine zirkuläre
- * Abhängigkeit erzeugen.
+ * MODULARIS steuert nur die Sichtbarkeit des Backend-Moduls (Menüeintrag),
+ * nicht das Bundle futuraweb/contao-modularis-builder selbst: das ist eine
+ * eigenständige Abhängigkeit dieser Suite (siehe composer.json) und weiß
+ * nichts von diesem Feature-Toggle - die Ausblendung des Menüeintrags
+ * passiert daher in ModuleVisibilityListener (dieses Bundle), nicht dort.
  */
 final class UserFeatureRegistry
 {
@@ -38,9 +39,11 @@ final class UserFeatureRegistry
     public const JS_FUNCTIONS = 'js_functions';
     public const SCSS_FEATURES = 'scss_features';
     public const FONT_COLOR_PICKER = 'font_color_picker';
+    public const DYNAMIC_FIELD_BUILDER = 'dynamic_field_builder';
+    public const MODULARIS = 'modularis';
 
     private const LABELS = [
-        self::STYLE_SELECTOR => 'Style-Selector (CSS-Klassen-Auswahl)',
+        self::STYLE_SELECTOR => 'Style-Selector (CSS-Klassen-Auswahl + BE Suite Style, Menüeintrag)',
         self::TOOLBAR_QUICKLINKS => 'Toolbar-Quicklinks',
         self::PAGE_ROOT_LANGUAGE => 'Sprache bei Startpunkten',
         self::PAGE_ID_ALIAS => 'ID-/Alias-Anzeige im Seitenbaum',
@@ -49,6 +52,8 @@ final class UserFeatureRegistry
         self::JS_FUNCTIONS => 'JavaScript-Funktionen (Layout)',
         self::SCSS_FEATURES => 'SCSS-Features (Layout)',
         self::FONT_COLOR_PICKER => 'Schriftarten-/Farben-Picker',
+        self::DYNAMIC_FIELD_BUILDER => 'BE Suite Builder (Feld-Builder, Menüeintrag)',
+        self::MODULARIS => 'Modularis (Menüeintrag)',
     ];
 
     /**

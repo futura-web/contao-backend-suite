@@ -59,7 +59,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Ordner-Namensbereinigung** — neu angelegte und umbenannte Ordner im Dateimanager werden wie Datei-Uploads bereinigt (siehe unten).
 - [x] **Projekt-Theme-Konfiguration** — Rahmen, Header, Hauptnavigation und Schriftgrößen/Abstände direkt im Theme-Formular pflegen, statt SCSS-Dateien von Hand zu editieren (siehe unten).
 - [x] **Contao Manager in neuem Tab** — der Link in der Hauptnavigation (System) öffnet den Contao Manager in einem neuen Tab statt die aktuelle Backend-Seite zu verlassen, mit kleinem ↗-Hinweis-Icon.
-- [x] **Erweiterungen pro Nutzer ausblenden** — ein Admin legt im Benutzer-Formular fest, welche der obigen Erweiterungen (Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features, Schriftarten-/Farben-Picker) für einen bestimmten Nutzer sichtbar sind (siehe unten).
+- [x] **Erweiterungen pro Nutzer ausblenden** — jeder Nutzer (auch Admins) legt selbst in "Mein Profil" fest, welche der obigen Erweiterungen inklusive der Menüeinträge von BE Suite Builder und Modularis für ihn sichtbar sind; ein Admin kann dasselbe im Benutzer-Formular auch für andere setzen (siehe unten).
 
 ### Style-Selector: Benutzung
 
@@ -109,12 +109,13 @@ Der Projekt-Ordner (unter `files/public/<slug>/...`) wird dynamisch über das Th
 
 ### Erweiterungen pro Nutzer ausblenden
 
-Nicht jeder Redakteur braucht jede Erweiterung der Suite zu sehen. Jeder Nutzer kann daher selbst in **„Mein Profil"** (Legende "Backend-Suite-Erweiterungen") festlegen, welche Erweiterungen für ihn sichtbar sind, und ein Admin kann dasselbe Feld auch im vollen Benutzer-Formular (Backend → **Benutzer** → Nutzer bearbeiten) für jeden anderen Nutzer setzen: Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features sowie der Schriftarten-/Farben-Picker.
+Nicht jeder Redakteur braucht jede Erweiterung der Suite zu sehen. Jeder Nutzer kann daher selbst in **„Mein Profil"** (Legende "Backend-Suite-Erweiterungen") festlegen, welche Erweiterungen für ihn sichtbar sind, und ein Admin kann dasselbe Feld auch im vollen Benutzer-Formular (Backend → **Benutzer** → Nutzer bearbeiten) für jeden anderen Nutzer setzen: Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features, Schriftarten-/Farben-Picker sowie die Menüeinträge von **BE Suite Builder** und **Modularis**.
 
 - Nichts angekreuzt (Standard, auch bei allen Bestandsnutzern inklusive Admins) bedeutet: keine der Erweiterungen ist sichtbar, bis gezielt welche angekreuzt werden.
 - Gilt für jeden Nutzer gleich, auch für Admins — keine automatische Ausnahme.
 - `tl_user` nutzt Contaos Subpaletten (`__selector__` = `inherit`/`admin`) und "Mein Profil" ersetzt die Paletten-Liste komplett durch eine eigene ("login") — das Feld ist deshalb in alle relevanten Paletten eingehängt (`login`, `default`, `group`, `extend`, `custom`, `admin`), nicht nur in eine.
-- Stille Hintergrund-Mechanik ohne eigene Sichtbarkeit (Bild-Shrinker — bereits pro Theme umschaltbar, Ordner-Namensbereinigung, Feld-Builder-Felder) sowie das Modularis-Element (eigenes Bundle) sind hiervon bewusst ausgenommen.
+- Der Menüeintrag "Modularis" gehört technisch zum separaten Bundle `futuraweb/contao-modularis-builder`, wird aber trotzdem von hier aus ein-/ausgeblendet (`ModuleVisibilityListener`) — das ist unproblematisch, weil diese Suite bereits von Modularis abhängt und nicht umgekehrt.
+- Stille Hintergrund-Mechanik ohne eigene Sichtbarkeit (Bild-Shrinker — bereits pro Theme umschaltbar, Ordner-Namensbereinigung, die eigentlichen Feld-Builder-Felder in den Zieltabellen) ist hiervon bewusst ausgenommen.
 
 ## Technik
 
