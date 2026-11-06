@@ -58,6 +58,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] Neueste Contao-Version anzeigen — bereits durch den Contao Manager abgedeckt (Versionsnummer + "neuste Version"-Hinweis bei jedem Update-Check), kein eigener Code nötig.
 - [x] **Ordner-Namensbereinigung** — neu angelegte und umbenannte Ordner im Dateimanager werden wie Datei-Uploads bereinigt (siehe unten).
 - [x] **Projekt-Theme-Konfiguration** — Rahmen, Header, Hauptnavigation und Schriftgrößen/Abstände direkt im Theme-Formular pflegen, statt SCSS-Dateien von Hand zu editieren (siehe unten).
+- [x] **Contao Manager in neuem Tab** — der Link in der Hauptnavigation (System) öffnet den Contao Manager in einem neuen Tab statt die aktuelle Backend-Seite zu verlassen, mit kleinem ↗-Hinweis-Icon.
 - [x] **Erweiterungen pro Nutzer ausblenden** — ein Admin legt im Benutzer-Formular fest, welche der obigen Erweiterungen (Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features, Schriftarten-/Farben-Picker) für einen bestimmten Nutzer sichtbar sind (siehe unten).
 
 ### Style-Selector: Benutzung
