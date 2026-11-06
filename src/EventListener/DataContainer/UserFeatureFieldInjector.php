@@ -9,20 +9,39 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsHook;
 use Futuraweb\ContaoBackendSuite\UserFeatures\UserFeatureRegistry;
 
 /**
- * Fügt das Feld "Backend-Suite-Erweiterungen" zum Benutzer-Formular hinzu,
- * über das ein Admin pro Nutzer auswählt, welche der optionalen Extras der
- * Suite für diesen Nutzer sichtbar sind - gedacht für Redakteure, die nur
- * einen Teil der Erweiterungen tatsächlich brauchen.
+ * Fügt das Feld "Backend-Suite-Erweiterungen" zum Benutzer-Formular hinzu -
+ * sowohl im "Benutzer"-Backend-Modul (ein Admin stellt es für einen anderen
+ * Nutzer ein) als auch in "Mein Profil" (jeder Nutzer stellt es für sich
+ * selbst ein).
  *
- * Nur im "Benutzer"-Backend-Modul sichtbar (volle tl_user-Palette), nicht
- * in "Mein Profil": dessen Formular verwendet ein eigenes, fest
- * verdrahtetes Feld-Set statt der hier erweiterten Standard-Palette.
+ * tl_user nutzt Contaos Subpaletten-Mechanismus (__selector__ = inherit,
+ * admin): je nach Nutzer ist in Wahrheit eine von "default", "group",
+ * "extend", "custom" oder "admin" aktiv, nie zuverlässig "default" allein -
+ * das Feld muss deshalb in alle eingehängt werden, sonst taucht es bei den
+ * meisten echten Nutzern gar nicht auf. "Mein Profil" ist nochmal ein
+ * Sonderfall: tl_user::handleUserProfile() (Contao-Core) ersetzt dort die
+ * komplette Paletten-Liste durch nur "login" - nur wenn unser Feld auch in
+ * dieser Palette steckt, erscheint es im eigenen Profil.
  */
 #[AsHook('loadDataContainer')]
 class UserFeatureFieldInjector
 {
     private const FIELD = 'backendSuiteFeatures';
     private const LEGEND = 'backend_suite_features_legend';
+
+    /**
+     * Palette => Legende, nach der unsere eigene eingehängt wird. Je nach
+     * Palette heißt die letzte sinnvolle Anker-Legende anders (siehe
+     * Contao-Core contao/dca/tl_user.php).
+     */
+    private const ANCHORS = [
+        'login' => 'theme_legend',
+        'admin' => 'admin_legend',
+        'default' => 'groups_legend',
+        'group' => 'groups_legend',
+        'extend' => 'groups_legend',
+        'custom' => 'groups_legend',
+    ];
 
     public function __construct(private readonly UserFeatureRegistry $registry)
     {
@@ -41,7 +60,7 @@ class UserFeatureFieldInjector
         }
 
         $dca['fields'][self::FIELD] = [
-            'label' => ['Backend-Suite-Erweiterungen', 'Nur die angekreuzten Erweiterungen sind für diesen Nutzer sichtbar. Nichts angekreuzt: alle Erweiterungen sind sichtbar (Standard). Admins sehen immer alles.'],
+            'label' => ['Backend-Suite-Erweiterungen', 'Nur die angekreuzten Erweiterungen sind sichtbar. Nichts angekreuzt: alle Erweiterungen sind sichtbar (Standard). Admins sehen immer alles.'],
             'exclude' => true,
             'inputType' => 'checkbox',
             'options' => $this->registry->getOptions(),
@@ -51,10 +70,20 @@ class UserFeatureFieldInjector
 
         $GLOBALS['TL_LANG']['tl_user'][self::LEGEND] = 'Backend-Suite-Erweiterungen';
 
-        PaletteManipulator::create()
-            ->addLegend(self::LEGEND, 'groups_legend', PaletteManipulator::POSITION_AFTER)
-            ->addField([self::FIELD], self::LEGEND, PaletteManipulator::POSITION_APPEND)
-            ->applyToPalette('default', 'tl_user')
-        ;
+        foreach (self::ANCHORS as $palette => $anchor) {
+            if (!isset($dca['palettes'][$palette]) || !\is_string($dca['palettes'][$palette])) {
+                continue;
+            }
+
+            if (!str_contains($dca['palettes'][$palette], '{'.$anchor)) {
+                continue;
+            }
+
+            PaletteManipulator::create()
+                ->addLegend(self::LEGEND, $anchor, PaletteManipulator::POSITION_AFTER)
+                ->addField([self::FIELD], self::LEGEND, PaletteManipulator::POSITION_APPEND)
+                ->applyToPalette($palette, 'tl_user')
+            ;
+        }
     }
 }
