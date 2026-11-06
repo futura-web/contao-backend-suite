@@ -60,7 +60,7 @@ class UserFeatureFieldInjector
         }
 
         $dca['fields'][self::FIELD] = [
-            'label' => ['Backend-Suite-Erweiterungen', 'Nur die angekreuzten Erweiterungen sind sichtbar. Nichts angekreuzt: alle Erweiterungen sind sichtbar (Standard). Admins sehen immer alles.'],
+            'label' => ['Backend-Suite-Erweiterungen', 'Nur die angekreuzten Erweiterungen sind sichtbar. Nichts angekreuzt (Standard): keine der Erweiterungen ist sichtbar. Gilt auch für Admins.'],
             'exclude' => true,
             'inputType' => 'checkbox',
             'options' => $this->registry->getOptions(),

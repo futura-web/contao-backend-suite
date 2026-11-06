@@ -60,16 +60,22 @@ final class UserFeatureRegistry
     }
 
     /**
-     * Admins sehen immer alles. Für alle anderen gilt: Ist das Feld noch
-     * nie gezielt befüllt worden (NULL oder leer - auch Bestandsnutzer vor
-     * Einführung dieses Felds), sind sicherheitshalber alle Erweiterungen
-     * aktiv, statt neue Nutzer versehentlich auszuschließen.
+     * Jeder Nutzer entscheidet selbst, auch Admins - keine automatische
+     * Ausnahme mehr. Default ist "versteckt": nichts angekreuzt (auch bei
+     * allen Bestandsnutzern, inklusive Admins, vor Einführung dieses Felds)
+     * bedeutet, keine der Erweiterungen ist sichtbar, bis der Nutzer
+     * gezielt welche in "Mein Profil" ankreuzt.
+     *
+     * Außerhalb eines echten Backend-Requests (kein angemeldeter Nutzer,
+     * z. B. contao:migrate/cache:warmup) liefert dies dagegen weiterhin
+     * true: sonst würden die DCA-Felder dieser Erweiterungen (z. B. der
+     * Style-Selector) dort nie registriert und ihre DB-Spalten nie
+     * angelegt, weil niemand angemeldet ist, der sie "sehen" könnte.
      *
      * Nutzt Security::getUser() statt BackendUser::getInstance(): Letzteres
-     * instanziiert auch außerhalb eines Backend-Requests (z. B.
-     * contao:migrate, cache:warmup - loadDataContainer läuft auch dort) ein
-     * Nutzerobjekt ohne geladene Datenbankzeile und wirft dabei "Undefined
-     * array key"-Warnings; Security::getUser() liefert dort schlicht null.
+     * instanziiert auch außerhalb eines Backend-Requests ein Nutzerobjekt
+     * ohne geladene Datenbankzeile und wirft dabei "Undefined array
+     * key"-Warnings; Security::getUser() liefert dort schlicht null.
      */
     public function isEnabledForCurrentUser(string $feature): bool
     {
@@ -79,21 +85,13 @@ final class UserFeatureRegistry
             return true;
         }
 
-        if ($user->isAdmin) {
-            return true;
-        }
-
         $raw = $user->backendSuiteFeatures ?? null;
 
         if (null === $raw || '' === $raw) {
-            return true;
+            return false;
         }
 
         $selected = StringUtil::deserialize($raw, true);
-
-        if ([] === $selected) {
-            return true;
-        }
 
         return \in_array($feature, $selected, true);
     }
