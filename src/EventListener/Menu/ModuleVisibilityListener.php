@@ -31,6 +31,7 @@ class ModuleVisibilityListener
     private const MODULES = [
         'style_selector' => UserFeatureRegistry::STYLE_SELECTOR,
         'dynamic_field' => UserFeatureRegistry::DYNAMIC_FIELD_BUILDER,
+        'redirect_wizard' => UserFeatureRegistry::REDIRECT_WIZARD,
         'modularis_templates' => UserFeatureRegistry::MODULARIS,
     ];
 

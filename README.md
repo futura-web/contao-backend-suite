@@ -61,6 +61,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Contao Manager in neuem Tab** — der Link in der Hauptnavigation (System) öffnet den Contao Manager in einem neuen Tab statt die aktuelle Backend-Seite zu verlassen, mit kleinem ↗-Hinweis-Icon.
 - [x] **Erweiterungen pro Nutzer ausblenden** — jeder Nutzer (auch Admins) legt selbst in "Mein Profil" fest, welche der obigen Erweiterungen inklusive der Menüeinträge von BE Suite Builder und Modularis für ihn sichtbar sind; ein Admin kann dasselbe im Benutzer-Formular auch für andere setzen (siehe unten).
 - [x] **Flache News-URLs** — entfernt den News-Reader-Seiten-Alias aus Sitemap und allen gerenderten Frontend-Links, sodass `/beitrag/artikel-slug` als `/artikel-slug` erscheint (siehe unten).
+- [x] **BE Suite Weiterleitungen** — Relaunch-Weiterleitungen ohne `.htaccess` und ohne FTP: alte Adressen einlesen, passende neue Seiten vorschlagen, daraus versteckte 301-Weiterleitungsseiten im Seitenbaum anlegen (siehe unten).
 
 ### Style-Selector: Benutzung
 
@@ -192,9 +193,64 @@ Jede Seite, die so geflaggt ist, bekommt ihren eigenen Alias automatisch sitewid
 
 Das ist zwar nicht als Composer-Install automatisierbar (ein Bundle kann die `.htaccess` des Webservers nicht verändern), aber ein reines Copy-&-Paste pro neuem Projekt — der `beitrag`-Alias oben muss zum Alias der tatsächlich geflaggten Seite passen. Bei mehreren geflaggten Reader-Seiten für unterschiedliche Inhaltstypen (News, Kalender, FAQ, ...) braucht jede ihr eigenes `.htaccess`-Regelpaar + Router-Script (Tabellenname in der `SELECT`-Abfrage anpassen, z. B. `tl_calendar_events` statt `tl_news`).
 
+### BE Suite Weiterleitungen
+
+Nach einem Relaunch sollen die Adressen des Altprojekts weiter funktionieren. Dieses Modul erledigt das ohne `.htaccess`, ohne `robots.txt` und ohne FTP-Zugang: es legt für jede alte Adresse eine Seite vom Typ **Weiterleitung** im Seitenbaum an.
+
+**Ablauf**
+
+1. Backend → **Backend-Suite → BE Suite Weiterleitungen** → neuen Importlauf anlegen.
+2. **Startpunkt** wählen. Die Klammer dahinter zeigt URL-Prefix und Endung, in die eine alte Adresse passen muss.
+3. **Ablage** wählen: unter dieser Seite entstehen die Weiterleitungsseiten. Am besten eine eigene, zugeklappte Seite am Ende des Baums. Die Position im Baum beeinflusst die Adresse nicht, nur der Alias zählt.
+4. **Quelle** wählen: URL-Liste einfügen (eine Adresse pro Zeile, als vollständige URL oder als Pfad) oder eine Domain beim Internet Archive abfragen.
+5. Auf **Vorschläge erzeugen** klicken, die Liste durchsehen, bei Bedarf Ziele korrigieren.
+6. Auf **Weiterleitungsseiten anlegen** klicken.
+
+**Warum das ohne .htaccess und ohne robots.txt reicht** — drei im Contao-Core nachgelesene Eigenschaften:
+
+- Statuscode: `RedirectPageController` liefert 301, sofern `tl_page.redirect` nicht auf `temporary` steht. Der Spaltendefault ist `permanent`.
+- Sitemap: derselbe Controller ist mit `#[AsPage(contentComposition: false)]` registriert, und `SitemapController` nimmt eine Seite nur auf, wenn `PageRegistry::supportsContentComposition()` wahr ist. Weiterleitungsseiten erscheinen damit nie in der `sitemap.xml`. Das Modul setzt `sitemap` und `robots` trotzdem defensiv mit, für Drittanbieter-Sitemaps.
+- Ziel: `PageResolver` gibt `tl_page.url` an `StringResolver` weiter, der den Wert durch den InsertTagParser schickt. Gespeichert wird deshalb `{{link_url::<id>}}` statt eines festen Pfads — die Weiterleitung bleibt also richtig, wenn sich der Alias der Zielseite später ändert.
+
+Jede angelegte Seite bekommt zusätzlich `hide = 1`. Ohne dieses Flag würden alle Weiterleitungsseiten in jedem Navigationsmodul auftauchen.
+
+**Was sich als Seite nicht abbilden lässt**
+
+| Alte Adresse | Ergebnis |
+| --- | --- |
+| `/alte-seite.html` | geht, Alias darf Punkt und Schrägstrich enthalten |
+| `/index.php?id=47` | nicht möglich, Query-Strings sind kein Alias |
+| ohne `/de/`, neue Startseite mit Sprach-Prefix | nicht möglich |
+| andere URL-Endung als am Startpunkt eingestellt | nicht möglich |
+
+Das Feld `routePath` in Contao 5.3 wäre der Ausweg, ist aber nur eine Anzeige (`PageRoutingListener::generateRoutePath`), kein Eingabefeld — Prefix und Endung hängen am Startpunkt und lassen sich pro Seite nicht umgehen. Solche Zeilen werden im Import entsprechend markiert und übersprungen; dafür braucht es eine Rewrite-Regel, z. B. `terminal42/contao-url-rewrite`.
+
+**Wie die Vorschläge zustande kommen**
+
+Aus der alten Adresse wird das letzte tragende Pfadsegment genommen, kleingeschrieben, von Umlauten und Trennzeichen befreit und gegen Alias, Titel und Seitentitel aller Inhaltsseiten des Startpunkts verglichen. Der Score ist das Maximum aus Zeichenähnlichkeit (`similar_text`) und Wort-Überschneidung (Jaccard). Ab 90 % gilt das Ziel als sicher, unter 55 % wird keines vorgeschlagen.
+
+Gesetzt wird ein Ziel nie ohne Rückfrage: alles unter 90 % steht als **„Ziel prüfen"** in der Liste. Eine falsche 301-Weiterleitung ist schädlicher als ein 404, weil sie niemandem auffällt — weder dem Redakteur noch der Suchmaschine, die den Zielinhalt dann als irrelevant für die alte Adresse bewertet.
+
+**Woher die Liste der alten Adressen kommt**
+
+Es gibt keine API, die den Google-Index einer Domain auflistet. Die Search-Console-API (`searchanalytics.query`) liefert nur Adressen mit Impressionen, laut Doku ausdrücklich nicht alle, sondern die oberen, und setzt voraus, dass die alte Domain dort noch verifiziert ist. Die URL-Inspection-API prüft nur einzelne Adressen und kann nicht auflisten. Brauchbare Quellen, nach Qualität sortiert:
+
+1. Ein Export der alten Datenbank (bei Contao: `tl_page`) — vollständig und exakt.
+2. Das Internet Archive, direkt im Modul abfragbar. Kein Zugangsschlüssel nötig, funktioniert auch bei längst abgeschalteten Seiten.
+3. Die Access-Logs der alten Seite, falls vorhanden. Enthalten auch Adressen mit Query-String.
+4. Das 404-Protokoll der neuen Seite, z. B. `lukasbableck/contao-404-log-bundle`. Zeigt genau die Adressen, die real noch angefragt werden.
+
+**Hinweise**
+
+- Die Tabellen `tl_bs_redirect_import` und `tl_bs_redirect` legt `contao:migrate` an.
+- Ein erneuter Lauf desselben Imports lässt bereits angelegte Zeilen als Protokoll stehen und überspringt schon eingelesene Adressen.
+- Die Ablage muss im Baum des gewählten Startpunkts liegen, sonst würden die Seiten unter anderen Adressen antworten. Das Modul bricht in dem Fall mit einer Meldung ab.
+- Die Seitenrechte des Nutzers gelten weiter: wer unterhalb der Ablage keine Seiten anlegen darf, bekommt eine Fehlermeldung statt neuer Seiten.
+- Läuft ein Reverse-Proxy, nach dem Anlegen einmal den Cache leeren, damit zwischengespeicherte 404-Antworten der alten Adressen verschwinden.
+
 ### Erweiterungen pro Nutzer ausblenden
 
-Nicht jeder Redakteur braucht jede Erweiterung der Suite zu sehen. Jeder Nutzer kann daher selbst in **„Mein Profil"** (Legende "Backend-Suite-Erweiterungen") festlegen, welche Erweiterungen für ihn sichtbar sind, und ein Admin kann dasselbe Feld auch im vollen Benutzer-Formular (Backend → **Benutzer** → Nutzer bearbeiten) für jeden anderen Nutzer setzen: Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features, Schriftarten-/Farben-Picker sowie die Menüeinträge von **BE Suite Builder** und **Modularis**.
+Nicht jeder Redakteur braucht jede Erweiterung der Suite zu sehen. Jeder Nutzer kann daher selbst in **„Mein Profil"** (Legende "Backend-Suite-Erweiterungen") festlegen, welche Erweiterungen für ihn sichtbar sind, und ein Admin kann dasselbe Feld auch im vollen Benutzer-Formular (Backend → **Benutzer** → Nutzer bearbeiten) für jeden anderen Nutzer setzen: Style-Selector, Toolbar-Quicklinks, Sprache bei Startpunkten, ID-/Alias-Anzeige, SEO-Längenanzeige, Projekt-Theme-Konfiguration, JS-Funktionen, SCSS-Features, Schriftarten-/Farben-Picker sowie die Menüeinträge von **BE Suite Builder**, **BE Suite Weiterleitungen** und **Modularis**.
 
 - Nichts angekreuzt (Standard, auch bei allen Bestandsnutzern inklusive Admins) bedeutet: keine der Erweiterungen ist sichtbar, bis gezielt welche angekreuzt werden.
 - Gilt für jeden Nutzer gleich, auch für Admins — keine automatische Ausnahme.

@@ -40,6 +40,7 @@ final class UserFeatureRegistry
     public const SCSS_FEATURES = 'scss_features';
     public const FONT_COLOR_PICKER = 'font_color_picker';
     public const DYNAMIC_FIELD_BUILDER = 'dynamic_field_builder';
+    public const REDIRECT_WIZARD = 'redirect_wizard';
     public const MODULARIS = 'modularis';
 
     private const LABELS = [
@@ -53,6 +54,7 @@ final class UserFeatureRegistry
         self::SCSS_FEATURES => 'SCSS-Features (Layout)',
         self::FONT_COLOR_PICKER => 'Schriftarten-/Farben-Picker',
         self::DYNAMIC_FIELD_BUILDER => 'BE Suite Builder (Feld-Builder, Menüeintrag)',
+        self::REDIRECT_WIZARD => 'BE Suite Weiterleitungen (Relaunch-Weiterleitungen, Menüeintrag)',
         self::MODULARIS => 'Modularis (Menüeintrag)',
     ];
 
