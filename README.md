@@ -60,6 +60,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Projekt-Theme-Konfiguration** — Rahmen, Header, Hauptnavigation und Schriftgrößen/Abstände direkt im Theme-Formular pflegen, statt SCSS-Dateien von Hand zu editieren (siehe unten).
 - [x] **Contao Manager in neuem Tab** — der Link in der Hauptnavigation (System) öffnet den Contao Manager in einem neuen Tab statt die aktuelle Backend-Seite zu verlassen, mit kleinem ↗-Hinweis-Icon.
 - [x] **Erweiterungen pro Nutzer ausblenden** — jeder Nutzer (auch Admins) legt selbst in "Mein Profil" fest, welche der obigen Erweiterungen inklusive der Menüeinträge von BE Suite Builder und Modularis für ihn sichtbar sind; ein Admin kann dasselbe im Benutzer-Formular auch für andere setzen (siehe unten).
+- [x] **Flache News-URLs** — entfernt den News-Reader-Seiten-Alias aus Sitemap und allen gerenderten Frontend-Links, sodass `/beitrag/artikel-slug` als `/artikel-slug` erscheint (siehe unten).
 
 ### Style-Selector: Benutzung
 
@@ -106,6 +107,92 @@ Im Theme-Bearbeiten-Formular gibt es zusätzliche Abschnitte, mit denen sich zen
 Leere Felder lassen den bestehenden SCSS-Wert unangetastet (kein Überschreiben). Die Farb-Dropdowns beziehen ihre Optionen aus den im Feld "Farben" (siehe oben) hinterlegten Variablen; Eckenradius/Abstände aus den `$clampXXpx`-Variablen in `_vars_sizes.scss`.
 
 Der Projekt-Ordner (unter `files/public/<slug>/...`) wird dynamisch über das Theme selbst ermittelt (`tl_theme.templates`), ist also nicht fest verdrahtet — funktioniert automatisch für jedes Theme, das dieser SCSS-Struktur folgt. Beim allerersten Umbenennen eines frisch aus dem Boilerplate-Ordner `project` erzeugten Themes werden `templates/project` und `files/public/project` zudem automatisch in einen aus dem Theme-Namen abgeleiteten Ordnernamen umbenannt.
+
+### Flache News-URLs
+
+Contao hängt bei News-Artikeln automatisch den Alias der Reader-Seite vor die URL (`/beitrag/artikel-slug`). Das lässt sich über Contao-Bordmittel nicht entfernen (ein leerer Seiten-Alias fällt intern auf die numerische Seiten-ID zurück). Diese Suite kann den Präfix stattdessen nachträglich aus Sitemap und Frontend-Ausgabe herausfiltern — in `config/packages/contao_backend_suite.yaml` (bzw. bei Managed-Edition-Projekten ohne `config/packages/`-Verzeichnis direkt in `config/config.yaml`, siehe `ContaoKernel::getConfigFile()`):
+
+```yaml
+contao_backend_suite:
+    flat_news_url_prefix: 'beitrag'
+```
+
+Leer lassen (Standard), um das Feature zu deaktivieren. Zwei Bundle-Listener erledigen dann automatisch:
+
+- `FlatNewsUrlSitemapListener` (auf `contao.sitemap`) — entfernt `/beitrag/` aus jedem `<loc>`-Eintrag der generierten `sitemap.xml`.
+- `FlatNewsUrlResponseListener` (auf `kernel.response`) — entfernt `/beitrag/` aus jedem gerenderten Frontend-HTML (Teaser, Navigation, Listen), sitewide.
+
+**Wichtig, bleibt manuell pro Projekt:** Diese zwei Listener sorgen nur dafür, dass Contao selbst nirgends mehr den Präfix *anzeigt*. Damit `https://projekt.de/artikel-slug` auch tatsächlich **erreichbar** ist (statt 404), braucht jedes Projekt einmalig zwei zusätzliche, nicht per Composer installierbare Dateien im Webroot — Apaches `mod_rewrite` ändert beim internen Weiterleiten zwar die ausgeführte Datei, aber nicht `$_SERVER['REQUEST_URI']`, auf dem Contaos Routing aufbaut:
+
+1. **`public/.htaccess`** — vor der bestehenden Contao-Front-Controller-Regel einfügen:
+
+   ```apache
+   # Alte /beitrag/<slug>-Links dauerhaft auf die flache Form umleiten
+   RewriteRule ^beitrag/([^/.]+)/?$ %{ENV:BASE}/$1 [R=301,L]
+
+   # Unbekannte Einzelsegment-Requests: router.php per DB-Check entscheiden lassen
+   RewriteCond %{REQUEST_FILENAME} !-f
+   RewriteCond %{REQUEST_FILENAME} !-d
+   RewriteRule ^([^/.]+)/?$ flat-news-router.php?slug=$1 [L,QSA]
+   ```
+
+   `[^/.]+` (nicht `[^/]+`) ist wichtig, sonst matcht die Regel auch `index.php` selbst und erzeugt eine Redirect-Schleife. `QSA` ist Pflicht, sonst verschluckt Apache bestehende Query-Strings (z. B. `/contao?do=page` würde sonst als Dashboard statt als Seiten-Modul laden).
+
+2. **`public/flat-news-router.php`** (Dateiname/Prefix anpassen):
+
+   ```php
+   <?php
+   // Löst "/slug" per DB-Check auf: ist "slug" ein echter tl_news.alias, wird
+   // intern an "/beitrag/slug" weitergereicht, sonst unverändert durchgelassen
+   // (echte Seiten, 404s, Backend etc. laufen dann normal durch Contao).
+   // Bewusst OHNE Symfony Dotenv: Dotenv::bootEnv() setzt ohne explizite
+   // Konfiguration APP_ENV=dev, was die ganze App in den Debug-Modus zwingen
+   // würde - DATABASE_URL wird deshalb per einfachem file()-Read geparst.
+
+   $slug = $_GET['slug'] ?? '';
+   unset($_GET['slug']);
+   $_SERVER['QUERY_STRING'] = '';
+
+   if ('' !== $slug) {
+       $databaseUrl = null;
+
+       foreach (['.env.local', '.env'] as $envFile) {
+           $path = __DIR__ . '/../' . $envFile;
+           if (!is_file($path)) { continue; }
+           foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+               if (str_starts_with($line, 'DATABASE_URL=')) {
+                   $databaseUrl = trim(substr($line, strlen('DATABASE_URL=')), " \t\"'");
+               }
+           }
+           if (null !== $databaseUrl) { break; }
+       }
+
+       $dbUrl = $databaseUrl ? parse_url($databaseUrl) : false;
+
+       if (false !== $dbUrl && isset($dbUrl['host'])) {
+           try {
+               $pdo = new PDO(
+                   sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                       $dbUrl['host'], $dbUrl['port'] ?? 3306, ltrim($dbUrl['path'] ?? '', '/')),
+                   rawurldecode($dbUrl['user'] ?? ''),
+                   rawurldecode($dbUrl['pass'] ?? ''),
+                   [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT],
+               );
+               $stmt = $pdo->prepare('SELECT COUNT(*) FROM tl_news WHERE alias = ? LIMIT 1');
+               $stmt->execute([$slug]);
+               if ((int) $stmt->fetchColumn() > 0) {
+                   $_SERVER['REQUEST_URI'] = '/beitrag/' . $slug;
+               }
+           } catch (\Throwable) {
+               // Bei jedem DB-Fehler durchlassen, Contao entscheidet selbst.
+           }
+       }
+   }
+
+   require __DIR__ . '/index.php';
+   ```
+
+Das ist zwar nicht als Composer-Install automatisierbar (ein Bundle kann die `.htaccess` des Webservers nicht verändern), aber ein reines Copy-&-Paste pro neuem Projekt — der `beitrag`-Alias oben muss zum konfigurierten `flat_news_url_prefix` passen.
 
 ### Erweiterungen pro Nutzer ausblenden
 
