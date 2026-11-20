@@ -17,6 +17,9 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * Priority -100 so this runs AFTER the core News/FAQ/Calendar/Newsletter
  * subscribers have already added their URLs to the document - otherwise
  * there is nothing yet to rewrite.
+ *
+ * Der Namensraum der <loc>-Elemente wird bewusst nicht festgelegt, siehe
+ * Kommentar in __invoke().
  */
 #[AsEventListener(event: ContaoCoreEvents::SITEMAP, priority: -100)]
 class FlatNewsUrlSitemapListener
@@ -34,7 +37,16 @@ class FlatNewsUrlSitemapListener
         }
 
         $document = $event->getDocument();
-        $locNodes = $document->getElementsByTagNameNS('https://www.sitemaps.org/schemas/sitemap/0.9', 'loc');
+
+        // Namensraum-Platzhalter "*" statt der festen Sitemap-URL: Contao
+        // hat den Namensraum des <urlset> zwischen den 5er-Versionen
+        // gewechselt (5.3 erzeugt "https://www.sitemaps.org/...", 5.7
+        // dagegen "http://www.sitemaps.org/..."). Ein fest verdrahteter
+        // Wert trifft daher je nach Contao-Version kein einziges Element,
+        // und zwar lautlos: das HTML wird weiter umgeschrieben, nur die
+        // sitemap.xml behaelt den Praefix. Der lokale Name "loc" ist
+        // dagegen in jeder Version derselbe.
+        $locNodes = $document->getElementsByTagNameNS('*', 'loc');
 
         foreach (iterator_to_array($locNodes) as $loc) {
             $url = $loc->textContent;
