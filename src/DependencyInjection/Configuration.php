@@ -25,10 +25,6 @@ class Configuration implements ConfigurationInterface
                     ->info('Wird im Feld-Builder angezeigt, falls eine DB-Spalte nicht automatisch angelegt werden konnte - idealerweise ein fertiger, kopierbarer SSH-Befehl für dieses Projekt.')
                     ->defaultValue('Datenbank manuell aktualisieren: "contao:migrate" per SSH ausführen, oder im Contao Manager unter "Contao-Einstellungen" auf "Datenbank migrieren" klicken.')
                 ->end()
-                ->scalarNode('flat_news_url_prefix')
-                    ->info('Alias der News-Reader-Seite (z.B. "beitrag"), der aus Sitemap-URLs und allen gerenderten Frontend-Links entfernt werden soll, sodass /beitrag/slug als /slug erscheint. Leer lassen, um das Feature zu deaktivieren. Die passenden .htaccess-/Router-Zeilen, die flache URLs auch tatsächlich servierbar machen, müssen weiterhin einmalig manuell pro Projekt eingerichtet werden (siehe Bundle-README).')
-                    ->defaultValue('')
-                ->end()
             ->end()
         ;
 

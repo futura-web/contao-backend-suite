@@ -17,7 +17,6 @@ class ContaoBackendSuiteExtension extends Extension
         $config = $this->processConfiguration($configuration, $configs);
 
         $container->setParameter('contao_backend_suite.ssh_migrate_hint', $config['ssh_migrate_hint']);
-        $container->setParameter('contao_backend_suite.flat_news_url_prefix', $config['flat_news_url_prefix']);
 
         $loader = new YamlFileLoader($container, new FileLocator(\dirname(__DIR__, 2).'/config'));
         $loader->load('services.yaml');

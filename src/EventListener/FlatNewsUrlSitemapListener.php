@@ -6,13 +6,13 @@ namespace Futuraweb\ContaoBackendSuite\EventListener;
 
 use Contao\CoreBundle\Event\ContaoCoreEvents;
 use Contao\CoreBundle\Event\SitemapEvent;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Futuraweb\ContaoBackendSuite\FlatUrl\FlatUrlPageAliasRegistry;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
- * Strips the configured news-reader-page prefix (e.g. "beitrag") from all
- * <loc> entries in the generated sitemap.xml, so "/beitrag/slug" appears as
- * "/slug". No-op if `contao_backend_suite.flat_news_url_prefix` is empty.
+ * Strips every reader page alias flagged via "backendSuiteFlatUrl" (e.g.
+ * "beitrag") from the <loc> entries of the generated sitemap.xml, so
+ * "/beitrag/slug" appears as "/slug". No-op if no page is flagged.
  *
  * Priority -100 so this runs AFTER the core News/FAQ/Calendar/Newsletter
  * subscribers have already added their URLs to the document - otherwise
@@ -21,28 +21,31 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 #[AsEventListener(event: ContaoCoreEvents::SITEMAP, priority: -100)]
 class FlatNewsUrlSitemapListener
 {
-    public function __construct(
-        #[Autowire('%contao_backend_suite.flat_news_url_prefix%')]
-        private readonly string $prefix,
-    ) {
+    public function __construct(private readonly FlatUrlPageAliasRegistry $aliases)
+    {
     }
 
     public function __invoke(SitemapEvent $event): void
     {
-        if ('' === $this->prefix) {
+        $aliases = $this->aliases->getFlaggedAliases();
+
+        if ([] === $aliases) {
             return;
         }
 
         $document = $event->getDocument();
         $locNodes = $document->getElementsByTagNameNS('https://www.sitemaps.org/schemas/sitemap/0.9', 'loc');
-        $needle = '/'.$this->prefix.'/';
 
         foreach (iterator_to_array($locNodes) as $loc) {
             $url = $loc->textContent;
-            $flatUrl = preg_replace('~'.preg_quote($needle, '~').'~', '/', $url, 1);
 
-            if (null !== $flatUrl && $flatUrl !== $url) {
-                $loc->textContent = $flatUrl;
+            foreach ($aliases as $alias) {
+                $needle = '/'.$alias.'/';
+
+                if (str_contains($url, $needle)) {
+                    $loc->textContent = preg_replace('~'.preg_quote($needle, '~').'~', '/', $url, 1);
+                    break;
+                }
             }
         }
     }

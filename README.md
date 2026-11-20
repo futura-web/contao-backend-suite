@@ -110,19 +110,17 @@ Der Projekt-Ordner (unter `files/public/<slug>/...`) wird dynamisch über das Th
 
 ### Flache News-URLs
 
-Contao hängt bei News-Artikeln automatisch den Alias der Reader-Seite vor die URL (`/beitrag/artikel-slug`). Das lässt sich über Contao-Bordmittel nicht entfernen (ein leerer Seiten-Alias fällt intern auf die numerische Seiten-ID zurück). Diese Suite kann den Präfix stattdessen nachträglich aus Sitemap und Frontend-Ausgabe herausfiltern — in `config/packages/contao_backend_suite.yaml` (bzw. bei Managed-Edition-Projekten ohne `config/packages/`-Verzeichnis direkt in `config/config.yaml`, siehe `ContaoKernel::getConfigFile()`):
+Contao hängt bei News-Artikeln automatisch den Alias der Reader-Seite vor die URL (`/beitrag/artikel-slug`). Das lässt sich über Contao-Bordmittel nicht entfernen (ein leerer Seiten-Alias fällt intern auf die numerische Seiten-ID zurück). Diese Suite kann den Präfix stattdessen nachträglich aus Sitemap und Frontend-Ausgabe herausfiltern — **direkt an der betroffenen Seite selbst**, kein separates Config-File nötig:
 
-```yaml
-contao_backend_suite:
-    flat_news_url_prefix: 'beitrag'
-```
+Backend → **Seiten** → die Reader-Seite öffnen (z. B. "Beitrag", Alias `beitrag`) → unter "Routing" (neben dem Alias) die Checkbox **"Flache Artikel-URLs"** ankreuzen.
 
-Leer lassen (Standard), um das Feature zu deaktivieren. Zwei Bundle-Listener erledigen dann automatisch:
+Jede Seite, die so geflaggt ist, bekommt ihren eigenen Alias automatisch sitewide aus den URLs alles dessen entfernt, was über sie gelesen wird — mehrere unabhängig geflaggte Reader-Seiten (z. B. eine für News, eine für den Kalender) funktionieren gleichzeitig. Zwei Bundle-Listener erledigen das automatisch, ohne Cache-Clear oder Konfig-Deploy:
 
-- `FlatNewsUrlSitemapListener` (auf `contao.sitemap`) — entfernt `/beitrag/` aus jedem `<loc>`-Eintrag der generierten `sitemap.xml`.
-- `FlatNewsUrlResponseListener` (auf `kernel.response`) — entfernt `/beitrag/` aus jedem gerenderten Frontend-HTML (Teaser, Navigation, Listen), sitewide.
+- `FlatNewsUrlSitemapListener` (auf `contao.sitemap`) — entfernt `/<alias>/` jeder geflaggten Seite aus jedem `<loc>`-Eintrag der generierten `sitemap.xml`.
+- `FlatNewsUrlResponseListener` (auf `kernel.response`) — entfernt `/<alias>/` jeder geflaggten Seite aus jedem gerenderten Frontend-HTML (Teaser, Navigation, Listen), sitewide.
+- Beide fragen die aktuell geflaggten Seiten live per `FlatUrlPageAliasRegistry` ab (kein Cache, keine Container-Parameter) — eine Änderung der Checkbox wirkt sofort beim nächsten Request.
 
-**Wichtig, bleibt manuell pro Projekt:** Diese zwei Listener sorgen nur dafür, dass Contao selbst nirgends mehr den Präfix *anzeigt*. Damit `https://projekt.de/artikel-slug` auch tatsächlich **erreichbar** ist (statt 404), braucht jedes Projekt einmalig zwei zusätzliche, nicht per Composer installierbare Dateien im Webroot — Apaches `mod_rewrite` ändert beim internen Weiterleiten zwar die ausgeführte Datei, aber nicht `$_SERVER['REQUEST_URI']`, auf dem Contaos Routing aufbaut:
+**Wichtig, bleibt manuell pro Projekt:** Diese zwei Listener sorgen nur dafür, dass Contao selbst nirgends mehr den Präfix *anzeigt*. Damit `https://projekt.de/artikel-slug` auch tatsächlich **erreichbar** ist (statt 404), braucht jedes Projekt pro geflaggter Reader-Seite einmalig zwei zusätzliche, nicht per Composer installierbare Dateien im Webroot — Apaches `mod_rewrite` ändert beim internen Weiterleiten zwar die ausgeführte Datei, aber nicht `$_SERVER['REQUEST_URI']`, auf dem Contaos Routing aufbaut:
 
 1. **`public/.htaccess`** — vor der bestehenden Contao-Front-Controller-Regel einfügen:
 
@@ -192,7 +190,7 @@ Leer lassen (Standard), um das Feature zu deaktivieren. Zwei Bundle-Listener erl
    require __DIR__ . '/index.php';
    ```
 
-Das ist zwar nicht als Composer-Install automatisierbar (ein Bundle kann die `.htaccess` des Webservers nicht verändern), aber ein reines Copy-&-Paste pro neuem Projekt — der `beitrag`-Alias oben muss zum konfigurierten `flat_news_url_prefix` passen.
+Das ist zwar nicht als Composer-Install automatisierbar (ein Bundle kann die `.htaccess` des Webservers nicht verändern), aber ein reines Copy-&-Paste pro neuem Projekt — der `beitrag`-Alias oben muss zum Alias der tatsächlich geflaggten Seite passen. Bei mehreren geflaggten Reader-Seiten für unterschiedliche Inhaltstypen (News, Kalender, FAQ, ...) braucht jede ihr eigenes `.htaccess`-Regelpaar + Router-Script (Tabellenname in der `SELECT`-Abfrage anpassen, z. B. `tl_calendar_events` statt `tl_news`).
 
 ### Erweiterungen pro Nutzer ausblenden
 
