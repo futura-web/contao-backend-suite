@@ -1,6 +1,7 @@
 /*
- * Stellt die Theme-Quicklinks (Module, Seitenlayouts, Bildgrößen) im
- * Backend-Header als Icon-Buttons dar statt als Text-Links, und
+ * Stellt die Quicklinks im Backend-Header als Icon-Buttons dar statt als
+ * Text-Links (Theme-Quicklinks Module, Seitenlayouts, Bildgrößen sowie den
+ * Modul-Quicklink Weiterleitungen), und
  * positioniert sie (per Flexbox-"order", #tmenu ist display:flex) vor
  * "Handbuch" statt ganz am Ende der Leiste.
  *
@@ -42,6 +43,12 @@ a.icon-tl_layout {
 
 a.icon-tl_image_size {
     background-image: url("/system/themes/flexible/icons/sizes.svg");
+}
+
+/* Modul-Quicklink, steht im DOM nach den Theme-Quicklinks und erscheint
+ * daher rechts neben "Bildgrößen". */
+a.icon-redirect_wizard {
+    background-image: url("/system/themes/flexible/icons/redirect.svg");
 }
 
 /*

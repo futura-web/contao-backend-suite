@@ -14,8 +14,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
- * Adds theme quicklinks (Module, Seitenlayouts, Bildgrößen) to the backend
- * header menu.
+ * Adds theme quicklinks (Module, Seitenlayouts, Bildgrößen) and module
+ * quicklinks (BE Suite Weiterleitungen) to the backend header menu.
  *
  * With a single theme, each quicklink is one direct link. With more than
  * one theme, each quicklink instead becomes a hover menu listing every
@@ -36,6 +36,16 @@ class HeaderToolbarMenuListener
         'tl_image_size' => 'backendSuiteQuicklinkImageSizes',
     ];
 
+    /**
+     * Quicklinks auf ganze Backend-Module statt auf Theme-Datensaetze,
+     * Modulname => Feature-Key. Jeder erscheint nur, wenn der Nutzer das
+     * zugehoerige Modul ueberhaupt eingeblendet hat - ein Icon, das zu
+     * einem fuer ihn unsichtbaren Menuepunkt fuehrt, waere verwirrend.
+     */
+    private const MODULE_QUICKLINKS = [
+        'redirect_wizard' => UserFeatureRegistry::REDIRECT_WIZARD,
+    ];
+
     public function __construct(
         private readonly Connection $connection,
         private readonly RouterInterface $router,
@@ -53,26 +63,41 @@ class HeaderToolbarMenuListener
             return;
         }
 
-        $themes = $this->connection->fetchAllKeyValue('SELECT id, name FROM tl_theme ORDER BY name');
-
-        if ([] === $themes) {
-            return;
-        }
-
-        // The "tl_theme" language file isn't loaded by default on pages
-        // that have nothing to do with themes (e.g. the dashboard), but
-        // the header menu is rendered on every backend page.
-        Controller::loadLanguageFile('tl_theme');
-
         $factory = $event->getFactory();
         $tree = $event->getTree();
+        $added = false;
 
-        foreach (self::QUICKLINKS as $table => $labelKey) {
-            $tree->addChild(
-                \count($themes) < 2
-                    ? $this->buildFlatLink($factory, $table, $labelKey, array_key_first($themes))
-                    : $this->buildNestedMenu($factory, $table, $labelKey, $themes),
-            );
+        $themes = $this->connection->fetchAllKeyValue('SELECT id, name FROM tl_theme ORDER BY name');
+
+        if ([] !== $themes) {
+            // The "tl_theme" language file isn't loaded by default on pages
+            // that have nothing to do with themes (e.g. the dashboard), but
+            // the header menu is rendered on every backend page.
+            Controller::loadLanguageFile('tl_theme');
+
+            foreach (self::QUICKLINKS as $table => $labelKey) {
+                $tree->addChild(
+                    \count($themes) < 2
+                        ? $this->buildFlatLink($factory, $table, $labelKey, array_key_first($themes))
+                        : $this->buildNestedMenu($factory, $table, $labelKey, $themes),
+                );
+            }
+
+            $added = true;
+        }
+
+        // Zuletzt eingehaengt, erscheint daher rechts neben "Bildgroessen":
+        // alle Eintraege teilen sich dasselbe Flexbox-"order", innerhalb
+        // dieser Gruppe entscheidet also die Reihenfolge im DOM.
+        foreach (self::MODULE_QUICKLINKS as $module => $feature) {
+            if ($this->features->isEnabledForCurrentUser($feature)) {
+                $tree->addChild($this->buildModuleLink($factory, $module));
+                $added = true;
+            }
+        }
+
+        if (!$added) {
+            return;
         }
 
         // Eigenes CSS, da Contao fuer diese (von uns hinzugefuegten) Klassen
@@ -88,6 +113,27 @@ class HeaderToolbarMenuListener
             ->setLabel($this->label($labelKey))
             ->setLinkAttribute('class', 'icon-'.$table)
             ->setLinkAttribute('title', $this->label($labelKey))
+            ->setAttribute('class', 'backend-suite-header-icon')
+            ->setExtra('translation_domain', false);
+    }
+
+    /**
+     * Quicklink auf ein komplettes Backend-Modul. Nicht themegebunden,
+     * daher immer ein einzelner flacher Link, auch bei mehreren Themes.
+     */
+    private function buildModuleLink(FactoryInterface $factory, string $module): ItemInterface
+    {
+        // Das Label steht in "modules" (Modulname in der Hauptnavigation),
+        // nicht in "tl_theme" wie bei den Theme-Quicklinks.
+        Controller::loadLanguageFile('modules');
+
+        $label = $GLOBALS['TL_LANG']['MOD'][$module][0] ?? $module;
+
+        return $factory->createItem('backendSuiteQuicklink_'.$module)
+            ->setUri($this->router->generate('contao_backend', ['do' => $module]))
+            ->setLabel($label)
+            ->setLinkAttribute('class', 'icon-'.$module)
+            ->setLinkAttribute('title', $label)
             ->setAttribute('class', 'backend-suite-header-icon')
             ->setExtra('translation_domain', false);
     }

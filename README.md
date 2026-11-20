@@ -80,6 +80,7 @@ Bei OM-Backend stapeln sich in der Toolbar die Theme-Buttons (Stylesheets, Modul
   - **Module**: pro Projekt ein Link zur Modul-Liste (ein Theme kann sehr viele Module haben, eine Einzelauflistung wäre unübersichtlich).
   - **Seitenlayouts** und **Bildgrößen**: pro Projekt werden die einzelnen Einträge direkt verlinkt (z. B. jedes Layout einzeln) — bei leerem Projekt fällt es auf einen Link zur Liste zurück.
 - Kein `tl_style_sheet`-Quicklink: Contao 5 hat den klassischen internen CSS-Editor nicht mehr, nur noch echte CSS-Dateien.
+- Rechts neben **Bildgrößen** steht zusätzlich ein Quicklink zu **BE Suite Weiterleitungen** (siehe unten). Der hängt an keinem Theme und ist daher immer ein einzelner Link, auch bei mehreren Projekten. Er erscheint nur, wenn der Nutzer sowohl die Toolbar-Quicklinks als auch das Weiterleitungen-Modul in "Mein Profil" aktiviert hat.
 
 ### Bild-Shrinker: Komprimierung & Dateinamen-Bereinigung
 
