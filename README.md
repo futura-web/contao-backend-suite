@@ -60,7 +60,7 @@ Die Features werden nacheinander gebaut. Stand:
 - [x] **Projekt-Theme-Konfiguration** — Rahmen, Header, Hauptnavigation und Schriftgrößen/Abstände direkt im Theme-Formular pflegen, statt SCSS-Dateien von Hand zu editieren (siehe unten).
 - [x] **Contao Manager in neuem Tab** — der Link in der Hauptnavigation (System) öffnet den Contao Manager in einem neuen Tab statt die aktuelle Backend-Seite zu verlassen, mit kleinem ↗-Hinweis-Icon.
 - [x] **Erweiterungen pro Nutzer ausblenden** — jeder Nutzer (auch Admins) legt selbst in "Mein Profil" fest, welche der obigen Erweiterungen inklusive der Menüeinträge von BE Suite Builder und Modularis für ihn sichtbar sind; ein Admin kann dasselbe im Benutzer-Formular auch für andere setzen (siehe unten).
-- [x] **Flache News-URLs** — entfernt den News-Reader-Seiten-Alias aus Sitemap und allen gerenderten Frontend-Links, sodass `/beitrag/artikel-slug` als `/artikel-slug` erscheint (siehe unten).
+- [x] **Flache News-URLs** — Seitentyp "Nachrichtenleser (flache URLs)": News-Artikel liegen direkt unter `/artikel-slug` statt `/beitrag/artikel-slug`, eingehend wie ausgehend, ohne `.htaccess` und ohne Skript im Webroot (siehe unten).
 - [x] **BE Suite Weiterleitungen** — Relaunch-Weiterleitungen ohne `.htaccess` und ohne FTP: alte Adressen einlesen, passende neue Seiten vorschlagen, daraus versteckte 301-Weiterleitungsseiten im Seitenbaum anlegen (siehe unten).
 
 ### Style-Selector: Benutzung
@@ -112,87 +112,44 @@ Der Projekt-Ordner (unter `files/public/<slug>/...`) wird dynamisch über das Th
 
 ### Flache News-URLs
 
-Contao hängt bei News-Artikeln automatisch den Alias der Reader-Seite vor die URL (`/beitrag/artikel-slug`). Das lässt sich über Contao-Bordmittel nicht entfernen (ein leerer Seiten-Alias fällt intern auf die numerische Seiten-ID zurück). Diese Suite kann den Präfix stattdessen nachträglich aus Sitemap und Frontend-Ausgabe herausfiltern — **direkt an der betroffenen Seite selbst**, kein separates Config-File nötig:
+Contao hängt bei News-Artikeln den Alias der Reader-Seite vor die URL (`/beitrag/artikel-slug`). Mit Bordmitteln lässt sich das nicht entfernen — ein leerer Seiten-Alias fällt intern auf die numerische Seiten-ID zurück.
 
-Backend → **Seiten** → die Reader-Seite öffnen (z. B. "Beitrag", Alias `beitrag`) → unter "Routing" (neben dem Alias) die Checkbox **"Flache Artikel-URLs"** ankreuzen.
+Die Suite bietet dafür zwei Wege. **Für neue Projekte den Seitentyp nehmen**; die Checkbox ist nur noch für Bestandsprojekte da.
 
-Jede Seite, die so geflaggt ist, bekommt ihren eigenen Alias automatisch sitewide aus den URLs alles dessen entfernt, was über sie gelesen wird — mehrere unabhängig geflaggte Reader-Seiten (z. B. eine für News, eine für den Kalender) funktionieren gleichzeitig. Zwei Bundle-Listener erledigen das automatisch, ohne Cache-Clear oder Konfig-Deploy:
+#### Empfohlen: Seitentyp "Nachrichtenleser (flache URLs)"
 
-- `FlatNewsUrlSitemapListener` (auf `contao.sitemap`) — entfernt `/<alias>/` jeder geflaggten Seite aus jedem `<loc>`-Eintrag der generierten `sitemap.xml`.
-- `FlatNewsUrlResponseListener` (auf `kernel.response`) — entfernt `/<alias>/` jeder geflaggten Seite aus jedem gerenderten Frontend-HTML (Teaser, Navigation, Listen), sitewide.
-- Beide fragen die aktuell geflaggten Seiten live per `FlatUrlPageAliasRegistry` ab (kein Cache, keine Container-Parameter) — eine Änderung der Checkbox wirkt sofort beim nächsten Request.
+Backend → **Seiten** → Reader-Seite öffnen → Seitentyp auf **"Nachrichtenleser (flache URLs)"** stellen. Dann im News-Archiv die **Weiterleitungsseite (`jumpTo`)** auf genau diese Seite zeigen lassen — darüber entscheidet das Bundle, welche Artikel die Seite annimmt.
 
-**Wichtig, bleibt manuell pro Projekt:** Diese zwei Listener sorgen nur dafür, dass Contao selbst nirgends mehr den Präfix *anzeigt*. Damit `https://projekt.de/artikel-slug` auch tatsächlich **erreichbar** ist (statt 404), braucht jedes Projekt pro geflaggter Reader-Seite einmalig zwei zusätzliche, nicht per Composer installierbare Dateien im Webroot — Apaches `mod_rewrite` ändert beim internen Weiterleiten zwar die ausgeführte Datei, aber nicht `$_SERVER['REQUEST_URI']`, auf dem Contaos Routing aufbaut:
+Das war es. Keine `.htaccess`, kein Skript im Webroot.
 
-1. **`public/.htaccess`** — vor der bestehenden Contao-Front-Controller-Regel einfügen:
+Die Seite bekommt die Route `/{alias}`, deren Anforderung zur Laufzeit auf exakt die Aliasse der Artikel eingeschränkt wird, deren Archiv auf sie zeigt. Dadurch greift sie nur bei echten Beiträgen und verschluckt keine anderen einsegmentigen Pfade — ohne Existenzprüfung bei jedem Request:
 
-   ```apache
-   # Alte /beitrag/<slug>-Links dauerhaft auf die flache Form umleiten
-   RewriteRule ^beitrag/([^/.]+)/?$ %{ENV:BASE}/$1 [R=301,L]
+- `Routing\FlatNewsPage` — der Seitentyp (`bs_news_flat`), setzt die Alias-Anforderung in `configurePageRoute()`.
+- `Routing\FlatNewsRouteEnhancer` — übersetzt den Alias in `parameters`, damit Contaos `InputEnhancer` daraus `auto_item` macht (Priority 10 > dessen 0).
+- `Routing\FlatNewsUrlResolver` — liefert den Alias beim Linkbau, womit flache URLs **schon bei der Erzeugung** entstehen statt per Textersatz im fertigen HTML.
+- `EventListener\FlatNewsLegacyUrlListener` — fängt die 404 der alten verschachtelten Form ab und leitet `/<leseseite>/<slug>` dauerhaft auf `/<slug>` um. Ersetzt die frühere `.htaccess`-Regel.
 
-   # Unbekannte Einzelsegment-Requests: router.php per DB-Check entscheiden lassen
-   RewriteCond %{REQUEST_FILENAME} !-f
-   RewriteCond %{REQUEST_FILENAME} !-d
-   RewriteRule ^([^/.]+)/?$ flat-news-router.php?slug=$1 [L,QSA]
-   ```
+**Zu beachten:** Die Leseseite belegt ihren eigenen Alias nicht mehr — `/beitrag` liefert 404. Wohin dieser Aufruf sinnvoll zeigt (Übersicht, Elternseite, Startseite), hängt vom Projekt ab und lässt sich nicht allgemein entscheiden; bei Bedarf eine Weiterleitungsseite im Baum anlegen.
 
-   `[^/.]+` (nicht `[^/]+`) ist wichtig, sonst matcht die Regel auch `index.php` selbst und erzeugt eine Redirect-Schleife. `QSA` ist Pflicht, sonst verschluckt Apache bestehende Query-Strings (z. B. `/contao?do=page` würde sonst als Dashboard statt als Seiten-Modul laden).
+#### Veraltet: Checkbox "Flache Artikel-URLs"
 
-2. **`public/flat-news-router.php`** (Dateiname/Prefix anpassen):
+Backend → **Seiten** → Reader-Seite → unter "Routing" die Checkbox **"Flache Artikel-URLs (veraltet)"**.
 
-   ```php
-   <?php
-   // Löst "/slug" per DB-Check auf: ist "slug" ein echter tl_news.alias, wird
-   // intern an "/beitrag/slug" weitergereicht, sonst unverändert durchgelassen
-   // (echte Seiten, 404s, Backend etc. laufen dann normal durch Contao).
-   // Bewusst OHNE Symfony Dotenv: Dotenv::bootEnv() setzt ohne explizite
-   // Konfiguration APP_ENV=dev, was die ganze App in den Debug-Modus zwingen
-   // würde - DATABASE_URL wird deshalb per einfachem file()-Read geparst.
+Zwei Listener entfernen den Präfix nachträglich aus der Ausgabe:
 
-   $slug = $_GET['slug'] ?? '';
-   unset($_GET['slug']);
-   $_SERVER['QUERY_STRING'] = '';
+- `FlatNewsUrlSitemapListener` (auf `contao.sitemap`) — aus jedem `<loc>` der `sitemap.xml`.
+- `FlatNewsUrlResponseListener` (auf `kernel.response`) — aus jedem gerenderten Frontend-HTML, sitewide.
+- Beide fragen die geflaggten Seiten live per `FlatUrlPageAliasRegistry` ab; eine Änderung wirkt sofort beim nächsten Request.
 
-   if ('' !== $slug) {
-       $databaseUrl = null;
+**Die entscheidende Einschränkung:** Beide wirken nur auf die *Anzeige*. Contaos Routing kennt weiterhin ausschließlich `/beitrag/slug`, die flache Form läuft also in einen 404. Jedes Projekt braucht deshalb zusätzlich eine `.htaccess`-Regel plus ein Router-Skript im Webroot, das `$_SERVER['REQUEST_URI']` vor dem Front-Controller umschreibt — per Composer nicht installierbar, weil ein Bundle die Webserver-Konfiguration nicht ändern kann.
 
-       foreach (['.env.local', '.env'] as $envFile) {
-           $path = __DIR__ . '/../' . $envFile;
-           if (!is_file($path)) { continue; }
-           foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
-               if (str_starts_with($line, 'DATABASE_URL=')) {
-                   $databaseUrl = trim(substr($line, strlen('DATABASE_URL=')), " \t\"'");
-               }
-           }
-           if (null !== $databaseUrl) { break; }
-       }
+Das vollständige Rezept dafür steht in der README von **v2.25.1**:
 
-       $dbUrl = $databaseUrl ? parse_url($databaseUrl) : false;
+```bash
+git show v2.25.1:README.md
+```
 
-       if (false !== $dbUrl && isset($dbUrl['host'])) {
-           try {
-               $pdo = new PDO(
-                   sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
-                       $dbUrl['host'], $dbUrl['port'] ?? 3306, ltrim($dbUrl['path'] ?? '', '/')),
-                   rawurldecode($dbUrl['user'] ?? ''),
-                   rawurldecode($dbUrl['pass'] ?? ''),
-                   [PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT],
-               );
-               $stmt = $pdo->prepare('SELECT COUNT(*) FROM tl_news WHERE alias = ? LIMIT 1');
-               $stmt->execute([$slug]);
-               if ((int) $stmt->fetchColumn() > 0) {
-                   $_SERVER['REQUEST_URI'] = '/beitrag/' . $slug;
-               }
-           } catch (\Throwable) {
-               // Bei jedem DB-Fehler durchlassen, Contao entscheidet selbst.
-           }
-       }
-   }
-
-   require __DIR__ . '/index.php';
-   ```
-
-Das ist zwar nicht als Composer-Install automatisierbar (ein Bundle kann die `.htaccess` des Webservers nicht verändern), aber ein reines Copy-&-Paste pro neuem Projekt — der `beitrag`-Alias oben muss zum Alias der tatsächlich geflaggten Seite passen. Bei mehreren geflaggten Reader-Seiten für unterschiedliche Inhaltstypen (News, Kalender, FAQ, ...) braucht jede ihr eigenes `.htaccess`-Regelpaar + Router-Script (Tabellenname in der `SELECT`-Abfrage anpassen, z. B. `tl_calendar_events` statt `tl_news`).
+Bestandsprojekte laufen damit unverändert weiter. Für alles Neue ist der Seitentyp oben der kürzere und robustere Weg.
 
 ### BE Suite Weiterleitungen
 
